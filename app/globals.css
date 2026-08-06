@@ -3,11 +3,18 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --bg-raised: #f7f7f7;
+  --ink-dim: #6b7280;
+  --line: #e5e7eb;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-bg-raised: var(--bg-raised);
+  --color-ink: var(--foreground);
+  --color-ink-dim: var(--ink-dim);
+  --color-line: var(--line);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -16,6 +23,9 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --bg-raised: #141414;
+    --ink-dim: #9ca3af;
+    --line: #262626;
   }
 }
 
