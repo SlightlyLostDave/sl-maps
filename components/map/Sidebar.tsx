@@ -2,6 +2,10 @@ import { supabase } from "@/lib/supabase";
 
 const PAGE_SIZE = 1000;
 
+type PlacemarkCategoryRow = {
+  categories: { slug: string } | null;
+};
+
 async function getCategoryCounts() {
   const counts = new Map<string | null, number>();
 
@@ -10,7 +14,8 @@ async function getCategoryCounts() {
       .from("placemarks")
       .select("categories(slug)")
       .is("deleted_at", null)
-      .range(offset, offset + PAGE_SIZE - 1);
+      .range(offset, offset + PAGE_SIZE - 1)
+      .returns<PlacemarkCategoryRow[]>();
 
     if (error) throw error;
     for (const { categories } of data) {
