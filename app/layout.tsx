@@ -1,14 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Archivo, Anybody, Martian_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const archivo = Archivo({
+  variable: "--font-archivo",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const anybody = Anybody({
+  variable: "--font-anybody",
+  subsets: ["latin"],
+});
+
+const martianMono = Martian_Mono({
+  variable: "--font-martian-mono",
   subsets: ["latin"],
 });
 
@@ -21,7 +26,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-theme="dark"
+      className={`${archivo.variable} ${anybody.variable} ${martianMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

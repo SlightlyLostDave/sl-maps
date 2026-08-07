@@ -31,11 +31,18 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
+.env.local
 
 # vercel
 .vercel
 
+.agents/
+.claude/
+.windsurf/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+sl-maps-schema-design.md
+sl-maps-style-guide.html

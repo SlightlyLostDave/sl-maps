@@ -1,36 +1,139 @@
 @import "tailwindcss";
 
+/* ── SL Maps · Crimson & Patina tokens ── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --bg-raised: #f7f7f7;
-  --ink-dim: #6b7280;
-  --line: #e5e7eb;
+  --ground-0: #0c0b09;
+  --ground-1: #131210;
+  --ground-2: #1c1912;
+  --ground-3: #262117;
+  --rule: #322c20;
+  --rule-strong: #4a4130;
+
+  --ink: #f0e8d6;
+  --ink-dim: #b9af95;
+  --ink-faint: #857c67;
+
+  --crimson: #d5202b;
+  --crimson-lift: #ee5a4e;
+  --crimson-deep: #8a2028;
+  --crimson-wash: #d5202b26;
+
+  --patina: #6fb3a4;
+  --patina-wash: #6fb3a41f;
+  --amber: #e0a85c;
+  --amber-wash: #e0a85c1f;
+  --oxide: #8f4436;
+
+  --cat-dive: #4e93c4;
+  --cat-urbex: #b79bdc;
+  --cat-rock: #b4762c;
+  --cat-heritage: #dccfb2;
+  --cat-nature: #7fa556;
+  --cat-none: #7c7565;
+
+  --on-crimson: #fff8ea;
+  --shadow: 0 10px 30px -12px #000000bf;
+
+  --background: var(--ground-0);
+  --foreground: var(--ink);
+  --bg-raised: var(--ground-1);
+
+  --radius-s: 4px;
+  --radius-m: 8px;
+  --radius-l: 12px;
+}
+
+[data-theme="light"] {
+  --ground-0: #f5f0e4;
+  --ground-1: #ede7d8;
+  --ground-2: #e4dcc9;
+  --ground-3: #d9d0b9;
+  --rule: #d2c7ac;
+  --rule-strong: #b0a382;
+
+  --ink: #1c1911;
+  --ink-dim: #4e4837;
+  --ink-faint: #736b53;
+
+  --crimson: #a81e22;
+  --crimson-lift: #94161f;
+  --crimson-deep: #d99b94;
+  --crimson-wash: #a81e2218;
+
+  --patina: #26685c;
+  --patina-wash: #26685c18;
+  --amber: #8a5e19;
+  --amber-wash: #8a5e1918;
+  --oxide: #7c3a2e;
+
+  --cat-dive: #2a6a99;
+  --cat-urbex: #6a4ba0;
+  --cat-rock: #7f590a;
+  --cat-heritage: #7d6d48;
+  --cat-nature: #4b6a2c;
+  --cat-none: #635c4c;
+
+  --on-crimson: #fff6ec;
+  --shadow: 0 10px 30px -14px #1c191140;
+
+  --background: var(--ground-0);
+  --foreground: var(--ink);
+  --bg-raised: var(--ground-1);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-bg-raised: var(--bg-raised);
-  --color-ink: var(--foreground);
+  --color-ground-2: var(--ground-2);
+  --color-ink: var(--ink);
   --color-ink-dim: var(--ink-dim);
-  --color-line: var(--line);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--rule);
+  --color-line-strong: var(--rule-strong);
+  --color-crimson: var(--crimson);
+  --color-crimson-lift: var(--crimson-lift);
+  --color-crimson-deep: var(--crimson-deep);
+  --color-crimson-wash: var(--crimson-wash);
+  --color-patina: var(--patina);
+  --color-patina-wash: var(--patina-wash);
+  --color-amber: var(--amber);
+  --color-amber-wash: var(--amber-wash);
+  --color-oxide: var(--oxide);
+  --color-on-crimson: var(--on-crimson);
+  --font-sans: var(--font-archivo);
+  --font-display: var(--font-anybody);
+  --font-mono: var(--font-martian-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --bg-raised: #141414;
-    --ink-dim: #9ca3af;
-    --line: #262626;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-archivo), system-ui, sans-serif;
+  transition:
+    background 0.25s,
+    color 0.25s;
+}
+
+.font-display {
+  font-family: var(--font-anybody), var(--font-archivo), sans-serif;
+  font-variation-settings: "wdth" 78;
+  font-stretch: 78%;
+  font-weight: 800;
+  letter-spacing: 0.005em;
+  text-transform: uppercase;
+  line-height: 0.94;
+}
+
+.eyebrow {
+  font-family: var(--font-archivo), sans-serif;
+  font-size: 0.688rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--crimson-lift);
 }
