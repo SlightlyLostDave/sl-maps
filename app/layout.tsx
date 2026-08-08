@@ -29,7 +29,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       data-theme="dark"
       className={`${archivo.variable} ${anybody.variable} ${martianMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="h-dvh flex flex-col overflow-hidden">{children}</body>
     </html>
   );
 }

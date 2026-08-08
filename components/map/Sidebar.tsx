@@ -1,78 +1,61 @@
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/server";
+import { assignCategoryShapes } from "@/lib/map/categoryStyle";
+import SidebarShell from "./SidebarShell";
+import FilterPanel, { type CategoryItem } from "./FilterPanel";
 
 const PAGE_SIZE = 1000;
 
-type PlacemarkCategoryRow = {
-  categories: { slug: string } | null;
-};
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-async function getCategoryCounts() {
-  const counts = new Map<string | null, number>();
+async function getCategoryCounts(supabase: SupabaseServerClient) {
+  const counts = new Map<string, number>();
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const { data, error } = await supabase
       .from("placemarks")
-      .select("categories(slug)")
+      .select("category_id")
       .is("deleted_at", null)
       .range(offset, offset + PAGE_SIZE - 1)
-      .returns<PlacemarkCategoryRow[]>();
+      .returns<{ category_id: string }[]>();
 
     if (error) throw error;
-    for (const { categories } of data) {
-      const category = categories?.slug ?? null;
-      counts.set(category, (counts.get(category) ?? 0) + 1);
+    for (const { category_id } of data) {
+      counts.set(category_id, (counts.get(category_id) ?? 0) + 1);
     }
     if (data.length < PAGE_SIZE) break;
   }
 
-  return [...counts.entries()]
-    .map(([category, count]) => ({ category, count }))
-    .sort((a, b) => b.count - a.count);
-}
-
-const CATEGORY_STYLE: Record<string, { color: string; shape: string }> = {
-  dive: { color: "var(--cat-dive)", shape: "50%" },
-  urbex: { color: "var(--cat-urbex)", shape: "2px" },
-  rock: { color: "var(--cat-rock)", shape: "2px" },
-  heritage: { color: "var(--cat-heritage)", shape: "2px" },
-  nature: { color: "var(--cat-nature)", shape: "2px" },
-};
-
-function categoryGlyph(category: string | null) {
-  const style = category ? CATEGORY_STYLE[category] : undefined;
-  if (!style) {
-    return (
-      <span className="h-2.25 w-2.25 shrink-0 rounded-full border-[3px] border-cat-none bg-background" />
-    );
-  }
-  return (
-    <span
-      className="h-2.25 w-2.25 shrink-0"
-      style={{ background: style.color, borderRadius: style.shape }}
-    />
-  );
+  return counts;
 }
 
 export default async function Sidebar() {
-  const categories = await getCategoryCounts();
+  const supabase = await createClient();
+
+  const [{ data: categories, error }, counts] = await Promise.all([
+    supabase
+      .from("categories")
+      .select("id, slug, name, color, sort_order")
+      .is("deleted_at", null)
+      .order("sort_order")
+      .returns<{ id: string; slug: string; name: string; color: string; sort_order: number }[]>(),
+    getCategoryCounts(supabase),
+  ]);
+
+  if (error) throw error;
+
+  const styles = assignCategoryShapes(categories ?? []);
+  const items: CategoryItem[] = (categories ?? []).map((category) => ({
+    id: category.id,
+    slug: category.slug,
+    name: category.name,
+    color: category.color,
+    shape: styles.get(category.id)!.shape,
+    count: counts.get(category.id) ?? 0,
+  }));
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-bg-raised p-5">
-      <h2 className="eyebrow">Explore</h2>
-      <ul className="flex flex-col gap-1">
-        {categories.map(({ category, count }) => (
-          <li
-            key={category ?? "uncategorized"}
-            className="flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm text-ink-dim transition-colors hover:bg-ground-2 hover:text-ink"
-          >
-            <span className="flex items-center gap-2">
-              {categoryGlyph(category)}
-              {category ?? "Uncategorized"}
-            </span>
-            <span className="font-mono text-xs text-ink-faint">{count}</span>
-          </li>
-        ))}
-      </ul>
-    </aside>
+    <SidebarShell>
+      <FilterPanel categories={items} />
+    </SidebarShell>
   );
 }

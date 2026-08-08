@@ -34,6 +34,13 @@
   --on-crimson: #fff8ea;
   --shadow: 0 10px 30px -12px #000000bf;
 
+  /* Map surface only. Read at runtime (getComputedStyle) by MapView to
+     quieten the stock Mapbox style instead of shipping a hosted custom one. */
+  --pin-stroke: #0c0b09;
+  --map-a: #16150f;
+  --map-b: #1f1c14;
+  --map-water: #14211f;
+
   --background: var(--ground-0);
   --foreground: var(--ink);
   --bg-raised: var(--ground-1);
@@ -75,6 +82,11 @@
 
   --on-crimson: #fff6ec;
   --shadow: 0 10px 30px -14px #1c191140;
+
+  --pin-stroke: #f5f0e4;
+  --map-a: #e8e2d2;
+  --map-b: #ded6c2;
+  --map-water: #cddbd8;
 
   --background: var(--ground-0);
   --foreground: var(--ink);

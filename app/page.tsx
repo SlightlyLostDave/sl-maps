@@ -10,7 +10,7 @@ export default async function Home() {
   } = await supabase.auth.getUser();
 
   return (
-    <div className="flex min-h-screen flex-1 flex-col bg-background">
+    <div className="flex h-full flex-1 flex-col overflow-hidden bg-background">
       <header className="flex items-center justify-between border-b border-line px-6 py-4">
         <div>
           <div className="eyebrow mb-1">SL Maps</div>

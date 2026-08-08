@@ -1,0 +1,174 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
+type PlacemarkDetails = {
+  id: string;
+  name: string;
+  description: string | null;
+  lat: number;
+  lon: number;
+  geom_kind: string;
+  priority: number | null;
+  want_to_go: boolean;
+  visited: boolean;
+  visit_count: number;
+  first_visited_on: string | null;
+  last_visited_on: string | null;
+  source: string;
+  external_url: string | null;
+  category: { id: string; slug: string; name: string; color: string; icon: string | null };
+  tags: { id: string; slug: string; name: string }[];
+};
+
+export default function DetailDrawer() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const id = searchParams.get("id");
+
+  // Keyed by the id it was fetched for, so `loading`/`details` can be
+  // derived during render instead of needing a synchronous setState at the
+  // top of the fetch effect.
+  const [result, setResult] = useState<{ id: string; data: PlacemarkDetails | null } | null>(null);
+  const details = result?.id === id ? result.data : null;
+  const loading = id != null && result?.id !== id;
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    const supabase = createClient();
+    supabase
+      .from("placemark_details")
+      .select("*")
+      .eq("id", id)
+      .single()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        setResult({ id, data: error ? null : (data as PlacemarkDetails) });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  function close() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("id");
+    const query = params.toString();
+    router.push(query ? `?${query}` : "?", { scroll: false });
+  }
+
+  useEffect(() => {
+    if (!id) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  if (!id) return null;
+
+  return (
+    <div className="absolute inset-0 z-30 flex items-end justify-center md:items-start md:justify-end md:p-4">
+      <div className="absolute inset-0" onClick={close} aria-hidden="true" />
+      <div className="relative z-10 max-h-[75vh] w-full overflow-y-auto rounded-t-xl border border-line-strong bg-bg-raised shadow-(--shadow) md:max-h-full md:w-[380px] md:rounded-xl">
+        <button
+          type="button"
+          onClick={close}
+          className="mx-auto mt-2.5 block h-1 w-[34px] rounded-full bg-line-strong md:hidden"
+          aria-label="Close"
+        />
+        <div className="p-4 pt-3.5 md:pt-4">
+          {loading && <p className="text-sm text-ink-faint">Loading…</p>}
+          {!loading && !details && <p className="text-sm text-ink-faint">Placemark not found.</p>}
+          {details && (
+            <>
+              <div
+                className="mb-1.5 flex items-center gap-1.5 text-[0.688rem] font-bold uppercase tracking-[0.14em]"
+                style={{ color: details.category.color }}
+              >
+                <span
+                  className="h-2.25 w-2.25 shrink-0 rounded-full"
+                  style={{ background: details.category.color }}
+                />
+                {details.category.name}
+              </div>
+              <div className="font-display text-2xl text-ink">{details.name}</div>
+
+              <div className="my-2.5 flex flex-wrap gap-3 border-b border-line pb-3.5 font-mono text-[9px] text-ink-faint">
+                <span>
+                  <b className="font-medium text-ink-dim">{details.lat.toFixed(4)}</b>,{" "}
+                  <b className="font-medium text-ink-dim">{details.lon.toFixed(4)}</b>
+                </span>
+                <span>{details.geom_kind}</span>
+              </div>
+
+              {details.description && (
+                <p className="mb-3 text-sm leading-relaxed text-ink-dim">{details.description}</p>
+              )}
+
+              <div className="grid grid-cols-[84px_1fr] items-center gap-x-3.5 gap-y-2 text-sm">
+                <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                  Status
+                </div>
+                <div className="text-ink-dim">
+                  {details.visited
+                    ? `Visited${details.last_visited_on ? ` · ${details.last_visited_on}` : ""}`
+                    : "Not visited"}
+                  {details.want_to_go && !details.visited ? " · Want to go" : ""}
+                </div>
+
+                {details.priority != null && (
+                  <>
+                    <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                      Priority
+                    </div>
+                    <div className="text-ink-dim">{details.priority} / 5</div>
+                  </>
+                )}
+
+                <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                  Source
+                </div>
+                <div className="text-ink-dim">{details.source}</div>
+
+                {details.tags.length > 0 && (
+                  <>
+                    <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                      Tags
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {details.tags.map((tag) => (
+                        <span
+                          key={tag.id}
+                          className="rounded-[3px] border border-line-strong px-1.5 py-0.5 font-mono text-[9px] text-ink-faint"
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {details.external_url && (
+                <a
+                  href={details.external_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-block text-sm text-crimson-lift underline"
+                >
+                  External link
+                </a>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
