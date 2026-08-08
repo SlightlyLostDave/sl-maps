@@ -1,23 +1,25 @@
 import Link from 'next/link';
-import ReviewExplorer from '@/components/review/ReviewExplorer';
+import CategoryExplorer from '@/components/categories/CategoryExplorer';
 
-export default async function ReviewPage({
+export default async function CategoriesPage({
   searchParams,
-}: PageProps<'/review'>) {
+}: PageProps<'/categories'>) {
   const params = await searchParams;
   const idParam = params.id;
   const selectedId = Array.isArray(idParam) ? idParam[0] : idParam;
+  const errorParam = params.error;
+  const error = Array.isArray(errorParam) ? errorParam[0] : errorParam;
 
   return (
     <div className="flex min-h-screen flex-1 flex-col bg-background">
       <header className="flex items-center justify-between border-b border-line px-6 py-4">
         <div>
           <div className="eyebrow mb-1">SL Maps</div>
-          <h1 className="font-display text-2xl text-ink">Review queue</h1>
+          <h1 className="font-display text-2xl text-ink">Categories</h1>
         </div>
         <div className="flex items-center gap-5">
-          <Link href="/categories" className="text-sm text-ink-dim underline">
-            Categories
+          <Link href="/review" className="text-sm text-ink-dim underline">
+            Review queue
           </Link>
           <Link href="/" className="text-sm text-ink-dim underline">
             Back to map
@@ -25,7 +27,7 @@ export default async function ReviewPage({
         </div>
       </header>
       <main className="flex min-h-0 flex-1 flex-col">
-        <ReviewExplorer selectedId={selectedId} />
+        <CategoryExplorer selectedId={selectedId} error={error} />
       </main>
     </div>
   );

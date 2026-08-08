@@ -20,6 +20,9 @@ export default async function Home() {
           <Link href="/review" className="text-sm text-ink-dim underline">
             Review queue
           </Link>
+          <Link href="/categories" className="text-sm text-ink-dim underline">
+            Categories
+          </Link>
           <form action={signOut} className="flex items-center gap-3">
             {user?.email && <span className="text-sm text-ink">{user.email}</span>}
             <button type="submit" className="text-sm underline">
