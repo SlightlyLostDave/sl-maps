@@ -4,6 +4,7 @@ import {
   updateCategory,
   deleteCategory,
 } from "@/app/actions/categories";
+import SubmitButton from "@/components/ui/SubmitButton";
 
 type CategoryDetailRow = {
   id: string;
@@ -127,12 +128,7 @@ export default async function CategoryDetail({
         <form action={createCategory} className="flex max-w-lg flex-col gap-4">
           <CategoryFields parentOptions={parentOptions} />
           <div>
-            <button
-              type="submit"
-              className="rounded-md bg-crimson px-4 py-2 text-sm font-medium text-on-crimson"
-            >
-              Create category
-            </button>
+            <SubmitButton>Create category</SubmitButton>
           </div>
         </form>
       </div>
@@ -181,12 +177,7 @@ export default async function CategoryDetail({
         </label>
         <CategoryFields parentOptions={parentOptions} category={category} />
         <div>
-          <button
-            type="submit"
-            className="rounded-md bg-crimson px-4 py-2 text-sm font-medium text-on-crimson"
-          >
-            Save changes
-          </button>
+          <SubmitButton>Save changes</SubmitButton>
         </div>
       </form>
 
@@ -220,13 +211,9 @@ export default async function CategoryDetail({
             </label>
           )}
           <div>
-            <button
-              type="submit"
-              disabled={childCount > 0}
-              className="self-start rounded-md bg-crimson px-4 py-2 text-sm font-medium text-on-crimson disabled:opacity-40"
-            >
+            <SubmitButton disabled={childCount > 0} className="self-start">
               {placemarkCount > 0 ? "Reassign & delete" : "Delete category"}
-            </button>
+            </SubmitButton>
           </div>
         </form>
       </section>

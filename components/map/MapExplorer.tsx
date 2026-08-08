@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import MapView from "@/components/map/MapView";
 import Sidebar from "@/components/map/Sidebar";
 import DetailDrawer from "@/components/map/DetailDrawer";
+import MapExplorerSkeleton from "@/components/map/MapExplorerSkeleton";
 
 export default function MapExplorer() {
   return (
@@ -10,7 +11,7 @@ export default function MapExplorer() {
           from the URL via useSearchParams, which requires a Suspense
           boundary for Next.js to allow the rest of the page to render
           without forcing full client-side rendering. */}
-      <Suspense fallback={null}>
+      <Suspense fallback={<MapExplorerSkeleton />}>
         <Sidebar />
         <div className="relative flex-1">
           <MapView />

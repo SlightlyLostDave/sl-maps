@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -11,6 +11,8 @@ import {
   type CategoryStyle,
 } from "@/lib/map/categoryStyle";
 import { iconName, registerShapeIcons } from "@/lib/map/shapeIcons";
+import MapLoadingOverlay from "./MapLoadingOverlay";
+import Spinner from "@/components/ui/Spinner";
 
 const MAP_STYLE = "mapbox://styles/mapbox/dark-v11";
 const SOURCE_ID = "placemarks";
@@ -157,6 +159,11 @@ export default function MapView() {
   const filtersRef = useRef<Filters>({ categoryIds: null, visited: null, wantToGo: false });
   const refreshRef = useRef<() => void>(() => {});
   const moveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestIdRef = useRef(0);
+  const inFlightRef = useRef(0);
+
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -204,10 +211,20 @@ export default function MapView() {
     const supabase = createClient();
 
     async function refresh() {
-      if (!map.isStyleLoaded() || !map.getSource(SOURCE_ID)) return;
+      // isStyleLoaded() is intentionally not part of this guard: refresh()
+      // is called synchronously right after addSource() in the "load"
+      // handler below, and the freshly-added source hasn't finished
+      // loading yet at that point, so isStyleLoaded() would still read
+      // false and silently skip the very first fetch (placemarks would
+      // then only appear after a pan triggers moveend).
+      if (!map.getSource(SOURCE_ID)) return;
       const bounds = map.getBounds();
       if (!bounds) return;
       const { categoryIds } = filtersRef.current;
+
+      const requestId = ++requestIdRef.current;
+      inFlightRef.current += 1;
+      setIsFetching(true);
 
       const { data, error } = await supabase.rpc("placemarks_geojson", {
         in_west: bounds.getWest(),
@@ -216,6 +233,14 @@ export default function MapView() {
         in_north: bounds.getNorth(),
         in_category_ids: categoryIds,
       });
+
+      inFlightRef.current -= 1;
+      if (inFlightRef.current === 0) setIsFetching(false);
+
+      // A newer request superseded this one — don't let a slow, stale
+      // response overwrite fresher data already on the map.
+      if (requestId !== requestIdRef.current) return;
+
       if (error) {
         console.error(error);
         return;
@@ -237,6 +262,7 @@ export default function MapView() {
     refreshRef.current = refresh;
 
     map.on("load", () => {
+      setMapLoaded(true);
       quietenBasemap(map);
       registerShapeIcons(map);
 
@@ -359,5 +385,16 @@ export default function MapView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filtersKey]);
 
-  return <div ref={containerRef} className="h-full w-full" />;
+  return (
+    <>
+      <div ref={containerRef} className="h-full w-full" />
+      {!mapLoaded && <MapLoadingOverlay />}
+      {mapLoaded && isFetching && (
+        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-full border border-line-strong bg-bg-raised px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-ink-dim shadow-(--shadow)">
+          <Spinner size="xs" />
+          Updating
+        </div>
+      )}
+    </>
+  );
 }

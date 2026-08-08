@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { updatePlacemark, skipPlacemark } from "@/app/actions/placemarks";
+import SubmitButton from "@/components/ui/SubmitButton";
 
 type PlacemarkDetail = {
   id: string;
@@ -109,19 +110,10 @@ export default async function ReviewDetail({ id }: { id?: string }) {
         </section>
 
         <div className="flex gap-3">
-          <button
-            type="submit"
-            className="rounded-md bg-crimson px-4 py-2 text-sm font-medium text-on-crimson"
-          >
-            Save &amp; mark reviewed
-          </button>
-          <button
-            type="submit"
-            formAction={skipWithId}
-            className="rounded-md border border-line px-4 py-2 text-sm text-ink-dim"
-          >
+          <SubmitButton>Save &amp; mark reviewed</SubmitButton>
+          <SubmitButton variant="outline" formAction={skipWithId}>
             Skip
-          </button>
+          </SubmitButton>
         </div>
       </form>
     </div>

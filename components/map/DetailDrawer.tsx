@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import Skeleton from "@/components/ui/Skeleton";
 
 type PlacemarkDetails = {
   id: string;
@@ -83,7 +84,27 @@ export default function DetailDrawer() {
           aria-label="Close"
         />
         <div className="p-4 pt-3.5 md:pt-4">
-          {loading && <p className="text-sm text-ink-faint">Loading…</p>}
+          {loading && (
+            <div>
+              <div className="mb-1.5 flex items-center gap-1.5">
+                <Skeleton className="h-2.25 w-2.25 rounded-full" />
+                <Skeleton className="h-2.5 w-20" />
+              </div>
+              <Skeleton className="h-6 w-40" />
+              <div className="my-2.5 flex gap-3 border-b border-line pb-3.5">
+                <Skeleton className="h-2.5 w-28" />
+                <Skeleton className="h-2.5 w-14" />
+              </div>
+              <div className="grid grid-cols-[84px_1fr] items-center gap-x-3.5 gap-y-2">
+                <Skeleton className="h-2.5 w-14" />
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-2.5 w-14" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-2.5 w-14" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            </div>
+          )}
           {!loading && !details && <p className="text-sm text-ink-faint">Placemark not found.</p>}
           {details && (
             <>
