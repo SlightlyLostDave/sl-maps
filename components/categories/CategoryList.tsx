@@ -1,4 +1,4 @@
-import Link from "next/link";
+import CategoryNavLink from "./CategoryNavLink";
 import { createClient } from "@/lib/supabase/server";
 
 const PAGE_SIZE = 1000;
@@ -61,7 +61,7 @@ function CategoryRowLink({
 }) {
   return (
     <li>
-      <Link
+      <CategoryNavLink
         href={`/categories?id=${category.id}`}
         className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
           indent ? "ml-6" : ""
@@ -82,7 +82,7 @@ function CategoryRowLink({
           <span className="font-mono text-xs text-ink-faint">{category.slug}</span>
           <span className="font-mono text-xs text-ink-faint">{count}</span>
         </span>
-      </Link>
+      </CategoryNavLink>
     </li>
   );
 }
@@ -98,14 +98,17 @@ export default async function CategoryList({
     getCategoryCounts(supabase),
   ]);
 
-  const topLevel = categories.filter((c) => !c.parent_id);
-  const childrenOf = (id: string) => categories.filter((c) => c.parent_id === id);
+  const topLevel = categories
+    .filter((c) => !c.parent_id)
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const childrenOf = (id: string) =>
+    categories.filter((c) => c.parent_id === id).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-bg-raised p-5">
+    <aside className="flex w-80 shrink-0 min-h-0 flex-col gap-4 border-r border-line bg-bg-raised p-5">
       <div className="flex items-center justify-between">
         <h2 className="eyebrow mb-1">Categories</h2>
-        <Link
+        <CategoryNavLink
           href="/categories?id=new"
           className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
             selectedId === "new"
@@ -114,9 +117,9 @@ export default async function CategoryList({
           }`}
         >
           + New category
-        </Link>
+        </CategoryNavLink>
       </div>
-      <ul className="flex flex-col gap-1">
+      <ul className="themed-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden">
         {topLevel.map((category) => (
           <li key={category.id}>
             <ul className="flex flex-col gap-1">

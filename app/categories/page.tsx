@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import CategoryExplorer from '@/components/categories/CategoryExplorer';
+import CategoryLoadingOverlay from '@/components/categories/CategoryLoadingOverlay';
+import { CategoryTransitionProvider } from '@/components/categories/CategoryTransitionContext';
 
 export default async function CategoriesPage({
   searchParams,
@@ -26,8 +28,11 @@ export default async function CategoriesPage({
           </Link>
         </div>
       </header>
-      <main className="flex min-h-0 flex-1 flex-col">
-        <CategoryExplorer selectedId={selectedId} error={error} />
+      <main className="relative flex min-h-0 flex-1 flex-col">
+        <CategoryTransitionProvider>
+          <CategoryLoadingOverlay />
+          <CategoryExplorer selectedId={selectedId} error={error} />
+        </CategoryTransitionProvider>
       </main>
     </div>
   );

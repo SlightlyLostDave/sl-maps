@@ -117,7 +117,7 @@ export default async function CategoryDetail({
   if (id === "new") {
     const parentOptions = await getTopLevelCategories();
     return (
-      <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
+      <div className="themed-scrollbar flex flex-1 flex-col gap-5 overflow-y-auto p-6">
         <div>
           <h2 className="eyebrow mb-1">New category</h2>
           <h1 className="font-display text-2xl text-ink">Create category</h1>
@@ -157,7 +157,7 @@ export default async function CategoryDetail({
   const deleteWithId = deleteCategory.bind(null, category.id);
 
   return (
-    <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
+    <div className="themed-scrollbar flex flex-1 flex-col gap-5 overflow-y-auto p-6">
       <div>
         <h2 className="eyebrow mb-1">Editing</h2>
         <h1 className="font-display text-2xl text-ink">{category.name}</h1>
