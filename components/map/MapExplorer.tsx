@@ -4,6 +4,7 @@ import Sidebar from "@/components/map/Sidebar";
 import DetailDrawer from "@/components/map/DetailDrawer";
 import MapExplorerSkeleton from "@/components/map/MapExplorerSkeleton";
 import { FilterTransitionProvider } from "@/components/map/FilterTransitionContext";
+import { MapControlsProvider } from "@/components/map/MapControlsContext";
 
 export default function MapExplorer() {
   return (
@@ -14,13 +15,15 @@ export default function MapExplorer() {
           without forcing full client-side rendering. */}
       <Suspense fallback={<MapExplorerSkeleton />}>
         <FilterTransitionProvider>
-          <Sidebar />
-          <div className="flex min-w-0 flex-1">
-            <div className="relative min-w-0 flex-1">
-              <MapView />
+          <MapControlsProvider>
+            <Sidebar />
+            <div className="flex min-w-0 flex-1">
+              <div className="relative min-w-0 flex-1">
+                <MapView />
+              </div>
+              <DetailDrawer />
             </div>
-            <DetailDrawer />
-          </div>
+          </MapControlsProvider>
         </FilterTransitionProvider>
       </Suspense>
     </div>

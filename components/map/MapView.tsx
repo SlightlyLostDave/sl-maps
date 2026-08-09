@@ -12,7 +12,9 @@ import {
 } from "@/lib/map/categoryStyle";
 import { iconName, registerShapeIcons } from "@/lib/map/shapeIcons";
 import MapLoadingOverlay from "./MapLoadingOverlay";
+import AddPlacemarkToolbar from "./AddPlacemarkToolbar";
 import { useFilterTransition } from "./FilterTransitionContext";
+import { useMapControls } from "./MapControlsContext";
 
 const MAP_STYLE = "mapbox://styles/mapbox/dark-v11";
 const SOURCE_ID = "placemarks";
@@ -122,6 +124,19 @@ function applyCategoryExpressions(map: mapboxgl.Map, styles: Map<string, Categor
   map.setPaintProperty(POINT_LAYER, "icon-color", iconColorExpr as any);
 }
 
+// Opens the create-placemark panel by setting the same `?id=new&lat=&lon=`
+// URL shape DetailDrawer reads, via the shallow-routing escape hatch used
+// throughout this file (see the point-click handler's comment for why
+// router.push() doesn't work on this fully-dynamic route).
+function openCreatePanel(lat: number, lon: number) {
+  const params = new URLSearchParams(window.location.search);
+  params.set("id", "new");
+  params.set("lat", String(lat));
+  params.set("lon", String(lon));
+  params.delete("edit");
+  window.history.pushState(null, "", `?${params.toString()}`);
+}
+
 class ZoomControl implements mapboxgl.IControl {
   private container?: HTMLDivElement;
 
@@ -163,14 +178,40 @@ export default function MapView() {
   const requestIdRef = useRef(0);
   const inFlightRef = useRef(0);
   const pendingCenterRef = useRef<[number, number] | null>(null);
+  const addModeRef = useRef(false);
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
+  const [addMode, setAddMode] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
   const filters = parseFilters(searchParams);
   const filtersKey = JSON.stringify(filters);
   const { isPending: filtersPending } = useFilterTransition();
+  const mapControls = useMapControls();
+
+  function handleUseLocation() {
+    setLocationError(null);
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation isn't available in this browser.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setAddMode(false);
+        openCreatePanel(latitude, longitude);
+        mapRef.current?.easeTo({
+          center: [longitude, latitude],
+          zoom: Math.max(mapRef.current.getZoom(), 13),
+          duration: 600,
+        });
+      },
+      () => setLocationError("Location permission was denied."),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }
 
   // Fetch categories once and (re)apply the icon-image / icon-color match
   // expressions whenever they load, including after the map itself loads.
@@ -209,6 +250,11 @@ export default function MapView() {
     });
     mapRef.current = map;
     map.addControl(new ZoomControl(), "top-right");
+
+    mapControls.register({
+      refresh: () => refreshRef.current(),
+      flyTo: (lngLat) => map.easeTo({ center: lngLat, duration: 600 }),
+    });
 
     // mapbox-gl only calls resize() on window resize (trackResize), not on
     // container resize — the DetailDrawer opening/closing changes the map
@@ -400,6 +446,23 @@ export default function MapView() {
         window.history.pushState(null, "", `?${params.toString()}`);
       });
 
+      // Generic background click for add-mode — registered separately from
+      // the layer-scoped handlers above since it must fire on empty map
+      // area, not a specific layer. Bails if the click actually hit an
+      // existing point or cluster so clicking a pin still opens its detail
+      // instead of creating a duplicate underneath it.
+      map.on("click", (event) => {
+        if (!addModeRef.current) return;
+        const hits = map.queryRenderedFeatures(event.point, {
+          layers: [POINT_LAYER, CLUSTER_CIRCLE_LAYER],
+        });
+        if (hits.length > 0) return;
+        addModeRef.current = false;
+        setAddMode(false);
+        map.getCanvas().style.cursor = "";
+        openCreatePanel(event.lngLat.lat, event.lngLat.lng);
+      });
+
       refresh();
     });
 
@@ -414,7 +477,20 @@ export default function MapView() {
       map.remove();
       mapRef.current = null;
     };
+    // mapControls is read once to register this map instance's refresh/flyTo
+    // into the shared context; it doesn't need to retrigger this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Cursor and click-handler both need the latest add-mode without
+  // re-registering the click listener (which is bound once above) — same
+  // ref-mirroring pattern as filtersRef below.
+  useEffect(() => {
+    addModeRef.current = addMode;
+    if (mapRef.current) {
+      mapRef.current.getCanvas().style.cursor = addMode ? "crosshair" : "";
+    }
+  }, [addMode]);
 
   // Keep the ref in sync and re-fetch whenever the URL-derived filters
   // change. filtersRef exists because map event handlers (click, moveend)
@@ -429,6 +505,14 @@ export default function MapView() {
   return (
     <>
       <div ref={containerRef} className="h-full w-full" />
+      {mapLoaded && (
+        <AddPlacemarkToolbar
+          addMode={addMode}
+          onToggleAddMode={() => setAddMode((v) => !v)}
+          onUseLocation={handleUseLocation}
+          locationError={locationError}
+        />
+      )}
       {!mapLoaded && <MapLoadingOverlay />}
       {mapLoaded && (filtersPending || isFetching) && <MapLoadingOverlay dim />}
     </>

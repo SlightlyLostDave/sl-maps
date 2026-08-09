@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Skeleton from "@/components/ui/Skeleton";
+import PlacemarkForm, { type PlacemarkFormValues } from "./PlacemarkForm";
+import type { SelectedTag } from "./TagInput";
 
 type PlacemarkDetails = {
   id: string;
@@ -24,19 +26,37 @@ type PlacemarkDetails = {
   tags: { id: string; slug: string; name: string }[];
 };
 
+function detailsToFormValues(details: PlacemarkDetails): PlacemarkFormValues {
+  return {
+    name: details.name,
+    categoryId: details.category?.id ?? "",
+    description: details.description ?? "",
+    priority: details.priority,
+    wantToGo: details.want_to_go,
+    externalUrl: details.external_url ?? "",
+    tags: details.tags.map((t): SelectedTag => ({ id: t.id, name: t.name })),
+  };
+}
+
 export default function DetailDrawer() {
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
+  const editing = searchParams.get("edit") === "1";
+  const isCreate = id === "new";
+  const latParam = searchParams.get("lat");
+  const lonParam = searchParams.get("lon");
 
   // Keyed by the id it was fetched for, so `loading`/`details` can be
   // derived during render instead of needing a synchronous setState at the
-  // top of the fetch effect.
+  // top of the fetch effect. refreshToken forces a refetch after a save
+  // without changing `id` (e.g. closing the edit form back to view mode).
   const [result, setResult] = useState<{ id: string; data: PlacemarkDetails | null } | null>(null);
+  const [refreshToken, setRefreshToken] = useState(0);
   const details = result?.id === id ? result.data : null;
-  const loading = id != null && result?.id !== id;
+  const loading = id != null && !isCreate && result?.id !== id;
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || isCreate) return;
     let cancelled = false;
     const supabase = createClient();
     supabase
@@ -51,16 +71,41 @@ export default function DetailDrawer() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, isCreate, refreshToken]);
 
   function close() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("id");
+    params.delete("edit");
+    params.delete("lat");
+    params.delete("lon");
     const query = params.toString();
     // See the shallow-routing note in MapView's point-click handler: this
     // is pure client state, so update the URL directly rather than via
     // router.push().
     window.history.pushState(null, "", query ? `?${query}` : "?");
+  }
+
+  function openEdit() {
+    if (!id) return;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("edit", "1");
+    window.history.pushState(null, "", `?${params.toString()}`);
+  }
+
+  function closeEdit() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("edit");
+    window.history.pushState(null, "", `?${params.toString()}`);
+  }
+
+  function openView(placemarkId: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("id", placemarkId);
+    params.delete("edit");
+    params.delete("lat");
+    params.delete("lon");
+    window.history.pushState(null, "", `?${params.toString()}`);
   }
 
   useEffect(() => {
@@ -94,7 +139,20 @@ export default function DetailDrawer() {
           Close
         </button>
         <div className="p-4 pt-3.5 md:pt-4">
-          {loading && (
+          {isCreate && (
+            <>
+              <h2 className="eyebrow mb-1">New placemark</h2>
+              <PlacemarkForm
+                mode="create"
+                lat={Number(latParam)}
+                lon={Number(lonParam)}
+                onSaved={(newId) => openView(newId)}
+                onCancel={close}
+              />
+            </>
+          )}
+
+          {!isCreate && loading && (
             <div>
               <div className="mb-1.5 flex items-center gap-1.5">
                 <Skeleton className="h-2.25 w-2.25 rounded-full" />
@@ -115,11 +173,34 @@ export default function DetailDrawer() {
               </div>
             </div>
           )}
-          {!loading && !details && <p className="text-sm text-ink-faint">Placemark not found.</p>}
-          {details && (
+
+          {!isCreate && !loading && !details && (
+            <p className="text-sm text-ink-faint">Placemark not found.</p>
+          )}
+
+          {details && editing && (
+            <>
+              <h2 className="eyebrow mb-1">Editing</h2>
+              <PlacemarkForm
+                mode="edit"
+                placemarkId={details.id}
+                initial={detailsToFormValues(details)}
+                lat={details.lat}
+                lon={details.lon}
+                onSaved={() => {
+                  setRefreshToken((n) => n + 1);
+                  closeEdit();
+                }}
+                onCancel={closeEdit}
+                onDeleted={close}
+              />
+            </>
+          )}
+
+          {details && !editing && (
             <>
               <div
-                className="mb-1.5 flex items-center gap-1.5 text-[0.688rem] font-bold uppercase tracking-[0.14em]"
+                className="mb-1.5 flex items-center gap-1.5 pr-14 text-[0.688rem] font-bold uppercase tracking-[0.14em] md:pr-16"
                 style={{ color: details.category.color }}
               >
                 <span
@@ -130,12 +211,21 @@ export default function DetailDrawer() {
               </div>
               <div className="font-display text-2xl text-ink">{details.name}</div>
 
-              <div className="my-2.5 flex flex-wrap gap-3 border-b border-line pb-3.5 font-mono text-[9px] text-ink-faint">
+              <div className="my-2.5 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3.5 font-mono text-[9px] text-ink-faint">
                 <span>
-                  <b className="font-medium text-ink-dim">{details.lat.toFixed(4)}</b>,{" "}
-                  <b className="font-medium text-ink-dim">{details.lon.toFixed(4)}</b>
+                  <span>
+                    <b className="font-medium text-ink-dim">{details.lat.toFixed(4)}</b>,{" "}
+                    <b className="font-medium text-ink-dim">{details.lon.toFixed(4)}</b>
+                  </span>{" "}
+                  <span>{details.geom_kind}</span>
                 </span>
-                <span>{details.geom_kind}</span>
+                <button
+                  type="button"
+                  onClick={openEdit}
+                  className="font-mono text-[10px] uppercase tracking-widest text-ink-faint hover:text-ink"
+                >
+                  Edit
+                </button>
               </div>
 
               {details.description && (

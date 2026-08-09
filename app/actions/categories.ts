@@ -3,17 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { slugify } from "@/lib/slug";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
-
-function slugify(input: string) {
-  const base = input
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return base || "category";
-}
 
 async function uniqueSlug(
   supabase: SupabaseServerClient,
@@ -83,7 +75,7 @@ export async function createCategory(formData: FormData) {
     if (!parent || parent.parent_id) redirect("/categories?id=new&error=has_children");
   }
 
-  const slug = await uniqueSlug(supabase, user.id, slugify(name));
+  const slug = await uniqueSlug(supabase, user.id, slugify(name, "category"));
 
   const { data, error } = await supabase
     .from("categories")
@@ -104,6 +96,35 @@ export async function createCategory(formData: FormData) {
   revalidatePath("/categories");
   revalidatePath("/");
   redirect(`/categories?id=${data.id}`);
+}
+
+// Used by the placemark form's inline "+ New category" affordance — unlike
+// createCategory, this must not redirect (it would blow away the in-progress
+// placemark form), so it returns the created row instead.
+export async function createCategoryQuick(
+  formData: FormData,
+): Promise<{ id: string; name: string; color: string } | { error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "not_authenticated" };
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return { error: "name_required" };
+  const color = String(formData.get("color") || "#7C9A55");
+
+  const slug = await uniqueSlug(supabase, user.id, slugify(name, "category"));
+  const { data, error } = await supabase
+    .from("categories")
+    .insert({ owner_id: user.id, name, slug, color })
+    .select("id, name, color")
+    .single();
+  if (error) return { error: error.message };
+
+  revalidatePath("/categories");
+  revalidatePath("/");
+  return data;
 }
 
 export async function updateCategory(id: string, formData: FormData) {

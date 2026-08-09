@@ -1,19 +1,12 @@
+import { HugeiconsIcon } from "@hugeicons/react";
+import { Search01Icon } from "@hugeicons/core-free-icons";
+
 // Visual placeholder only. Full-text search (query param `q`, respecting
 // active filters per sl-maps.html step 2.3) is not wired up yet.
 export default function SearchField() {
   return (
     <div className="flex items-center gap-2 rounded-md border border-line bg-ground-2 px-3 py-2 text-ink-faint">
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 16 16"
-        className="h-3.5 w-3.5 shrink-0"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-      >
-        <circle cx="6.5" cy="6.5" r="4.5" />
-        <line x1="10" y1="10" x2="14" y2="14" strokeLinecap="round" />
-      </svg>
+      <HugeiconsIcon icon={Search01Icon} size={14} className="shrink-0" strokeWidth={1.5} />
       <input
         type="text"
         disabled

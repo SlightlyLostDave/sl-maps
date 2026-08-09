@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ### SL Maps
 
-A personal field-mapping tool for tracking real-world "placemarks" (dive sites, urbex spots, rockhounding, heritage sites, etc.) with categories, tags, visits, and photo media, backed by PostGIS geometry. See `sl-maps-schema-design.md` for the full data model design, and `sl-maps.html` / `sl-maps-style-guide.html` for the product plan and visual style guide (dark "Moss & Amber field manual" theme).
+A personal field-mapping tool for tracking real-world "placemarks" (dive sites, urbex spots, rockhounding, heritage sites, etc.) with categories, tags, visits, and photo media, backed by PostGIS geometry. See `sl-maps-schema-design.md` for the full data model design, and `sl-maps.html` / `sl-maps-style-guide.html` for the product plan and visual style guide (dark "Crimson & Patina field manual" theme — see the CSS token comment header in `app/globals.css`).
 
 ### Stack
 
@@ -18,16 +18,18 @@ A personal field-mapping tool for tracking real-world "placemarks" (dive sites, 
 - Tailwind CSS v4 (`@tailwindcss/postcss`, no `tailwind.config.*` — CSS-based config in `app/globals.css`)
 - Supabase (`@supabase/supabase-js`, `@supabase/ssr`) for auth + Postgres/PostGIS
 - `mapbox-gl` v3 for the map view
+- `@hugeicons/react` + `@hugeicons/core-free-icons` for UI icons — `<HugeiconsIcon icon={SomeIcon} />`, icon data imported by name (e.g. `Search01Icon`) from `@hugeicons/core-free-icons`, tree-shakes per-icon since both packages are `sideEffects: false`. (Not `hugeicons-react`, which is deprecated.)
 
 ### Structure
 
-- `app/actions/` — server actions: `auth.ts` (Supabase `signInWithPassword`), `categories.ts`, `placemarks.ts`
+- `app/actions/` — server actions: `auth.ts` (Supabase `signInWithPassword`), `categories.ts` (CRUD + `createCategoryQuick` for inline creation from other forms), `placemarks.ts` (`createPlacemark`, `savePlacemark` — general edit, distinct from the narrower `/review`-queue `updatePlacemark`/`skipPlacemark` — `deletePlacemark` soft delete, `logVisit`, tag find-or-create/replace-all helpers)
 - `app/categories/`, `app/review/`, `app/sign-in/`, `app/page.tsx` — routes, each with `loading.tsx` where relevant
-- `components/map/` — `MapExplorer.tsx`, `MapView.tsx` (mapbox-gl wrapper + clustering), `MapLoadingOverlay.tsx`, `Sidebar.tsx`/`SidebarShell.tsx`, `FilterPanel.tsx` (composes `CategoryFilter.tsx`, `StatusFilter.tsx`, `SearchField.tsx`), `FilterTransitionContext.tsx`/`useFilterParams.ts` (URL-search-param-backed filter state via `useTransition`), `DetailDrawer.tsx`
+- `components/map/` — `MapExplorer.tsx`, `MapView.tsx` (mapbox-gl wrapper + clustering + click-to-add-placemark mode + geolocation), `MapLoadingOverlay.tsx`, `AddPlacemarkToolbar.tsx` ("+ Add placemark" / "Use my location" map overlay), `Sidebar.tsx`/`SidebarShell.tsx`, `FilterPanel.tsx` (composes `CategoryFilter.tsx`, `StatusFilter.tsx`, `SearchField.tsx`), `FilterTransitionContext.tsx`/`useFilterParams.ts` (URL-search-param-backed filter state via `useTransition`), `MapControlsContext.tsx` (exposes MapView's `refresh`/`flyTo` to sibling components without exposing the mapbox instance directly), `DetailDrawer.tsx` (URL-driven view/edit/create panel — `?id=<uuid>`, `?id=<uuid>&edit=1`, `?id=new&lat=&lon=`), `PlacemarkForm.tsx` (shared create/edit form: category inline-create, autosave-on-blur description, log-a-visit, delete-with-confirm), `TagInput.tsx` (debounced tag autocomplete + inline tag creation)
 - `components/categories/`, `components/review/` — category management and backlog-placemark review UIs
 - `components/ui/` — shared primitives (`Skeleton.tsx`, `Spinner.tsx`, `SubmitButton.tsx`)
 - `lib/supabase/` — `client.ts`, `server.ts`, `middleware.ts` (`updateSession`)
 - `lib/map/` — `categoryStyle.ts`, `shapeIcons.ts`
+- `lib/slug.ts` — shared `slugify`, kept outside `app/actions/` because `"use server"` files may only export async functions
 - `sql/` — incremental migrations (e.g. `0001_placemarks_needs_review.sql`)
 - `proxy.ts` (repo root) — Next.js 16 renamed `middleware.ts` to `proxy.ts`; this invokes `lib/supabase/middleware.ts`'s `updateSession` for auth session handling. It is the framework's replacement, not a stray file.
 
