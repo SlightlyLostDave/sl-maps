@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { createClient } from "@/lib/supabase/client";
@@ -25,6 +25,7 @@ const LARGE_CLUSTER_THRESHOLD = 100;
 type PlacemarkFeature = GeoJSON.Feature<
   GeoJSON.Geometry,
   {
+    id: string;
     name: string;
     category_id: string;
     priority: number | null;
@@ -161,11 +162,11 @@ export default function MapView() {
   const moveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
   const inFlightRef = useRef(0);
+  const pendingCenterRef = useRef<[number, number] | null>(null);
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
 
-  const router = useRouter();
   const searchParams = useSearchParams();
   const filters = parseFilters(searchParams);
   const filtersKey = JSON.stringify(filters);
@@ -208,6 +209,19 @@ export default function MapView() {
     });
     mapRef.current = map;
     map.addControl(new ZoomControl(), "top-right");
+
+    // mapbox-gl only calls resize() on window resize (trackResize), not on
+    // container resize — the DetailDrawer opening/closing changes the map
+    // container's width via flex layout without firing a window resize
+    // event, so the canvas would otherwise keep rendering at its stale size.
+    const resizeObserver = new ResizeObserver(() => {
+      map.resize();
+      if (pendingCenterRef.current) {
+        map.easeTo({ center: pendingCenterRef.current, duration: 300 });
+        pendingCenterRef.current = null;
+      }
+    });
+    resizeObserver.observe(containerRef.current);
 
     const supabase = createClient();
 
@@ -255,7 +269,16 @@ export default function MapView() {
           if (wantToGo && !feature.properties.want_to_go) return false;
           return true;
         })
-        .map((feature) => ({ ...feature, geometry: toPointGeometry(feature.geometry) }));
+        .map((feature) => ({
+          ...feature,
+          geometry: toPointGeometry(feature.geometry),
+          // Supercluster (used internally by the clustered GeoJSON source)
+          // does not preserve each leaf feature's top-level `id` once
+          // features are clustered, so the click handler can't rely on
+          // feature.id — mirror it into properties, which clustering does
+          // preserve.
+          properties: { ...feature.properties, id: feature.id as string },
+        }));
 
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
       source.setData({ type: "FeatureCollection", features });
@@ -353,11 +376,28 @@ export default function MapView() {
 
       map.on("click", POINT_LAYER, (event) => {
         const [feature] = map.queryRenderedFeatures(event.point, { layers: [POINT_LAYER] });
-        const id = feature?.id ?? feature?.properties?.id;
+        const id = feature?.properties?.id ?? feature?.id;
         if (id == null) return;
+        // Opening the drawer shrinks the map container (see the
+        // ResizeObserver above), which re-centers the viewport around its
+        // old center in the new, narrower canvas — re-queue the clicked
+        // placemark's coordinates so it ends up centered in that view
+        // instead of drifting toward the edge.
+        if (feature?.geometry.type === "Point") {
+          pendingCenterRef.current = feature.geometry.coordinates as [number, number];
+        }
         const params = new URLSearchParams(window.location.search);
         params.set("id", String(id));
-        router.push(`?${params.toString()}`, { scroll: false });
+        // Plain router.push() here round-trips through the server (this
+        // route reads cookies, so it's fully dynamic) and, per
+        // node_modules/next/dist/docs/01-app/02-guides/single-page-applications.md
+        // ("Shallow routing on the client"), that RSC round-trip can resolve
+        // without ever committing the URL/search-param change for
+        // same-page navigations. Opening/closing the detail pane is pure
+        // client state, so use the documented shallow-routing escape hatch
+        // (history.pushState, which Next's router patches to stay in sync
+        // with useSearchParams) instead of router.push().
+        window.history.pushState(null, "", `?${params.toString()}`);
       });
 
       refresh();
@@ -370,10 +410,10 @@ export default function MapView() {
 
     return () => {
       if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
+      resizeObserver.disconnect();
       map.remove();
       mapRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Keep the ref in sync and re-fetch whenever the URL-derived filters

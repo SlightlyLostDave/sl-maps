@@ -15,8 +15,10 @@ export default function MapExplorer() {
       <Suspense fallback={<MapExplorerSkeleton />}>
         <FilterTransitionProvider>
           <Sidebar />
-          <div className="relative flex-1">
-            <MapView />
+          <div className="flex min-w-0 flex-1">
+            <div className="relative min-w-0 flex-1">
+              <MapView />
+            </div>
             <DetailDrawer />
           </div>
         </FilterTransitionProvider>

@@ -1,12 +1,11 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useFilterTransition } from "./FilterTransitionContext";
 
 export type VisitedStatus = "all" | "visited" | "not_visited";
 
 export function useFilterParams() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { startTransition } = useFilterTransition();
 
@@ -22,8 +21,15 @@ export function useFilterParams() {
   function updateParams(mutate: (params: URLSearchParams) => void) {
     const params = new URLSearchParams(searchParams.toString());
     mutate(params);
+    // Filters are pure client state (read by MapView/DetailDrawer, not the
+    // server Page component), so update the URL via history.pushState
+    // rather than router.push(). See the shallow-routing note in
+    // MapView's point-click handler for why router.push() doesn't work
+    // here: this route reads cookies (fully dynamic), and its RSC
+    // round-trip can resolve without ever committing a same-page
+    // search-param navigation.
     startTransition(() => {
-      router.push(`?${params.toString()}`, { scroll: false });
+      window.history.pushState(null, "", `?${params.toString()}`);
     });
   }
 

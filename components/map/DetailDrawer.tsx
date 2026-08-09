@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Skeleton from "@/components/ui/Skeleton";
 
@@ -26,7 +26,6 @@ type PlacemarkDetails = {
 
 export default function DetailDrawer() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const id = searchParams.get("id");
 
   // Keyed by the id it was fetched for, so `loading`/`details` can be
@@ -58,7 +57,10 @@ export default function DetailDrawer() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("id");
     const query = params.toString();
-    router.push(query ? `?${query}` : "?", { scroll: false });
+    // See the shallow-routing note in MapView's point-click handler: this
+    // is pure client state, so update the URL directly rather than via
+    // router.push().
+    window.history.pushState(null, "", query ? `?${query}` : "?");
   }
 
   useEffect(() => {
@@ -74,15 +76,23 @@ export default function DetailDrawer() {
   if (!id) return null;
 
   return (
-    <div className="absolute inset-0 z-30 flex items-end justify-center md:items-start md:justify-end md:p-4">
-      <div className="absolute inset-0" onClick={close} aria-hidden="true" />
-      <div className="relative z-10 max-h-[75vh] w-full overflow-y-auto rounded-t-xl border border-line-strong bg-bg-raised shadow-(--shadow) md:max-h-full md:w-[380px] md:rounded-xl">
+    <div className="fixed inset-0 z-30 flex items-end justify-center md:static md:z-auto md:h-full md:w-1/2 md:shrink-0 md:items-stretch md:justify-end">
+      <div className="absolute inset-0 md:hidden" onClick={close} aria-hidden="true" />
+      <div className="relative z-10 max-h-[75vh] w-full overflow-y-auto rounded-t-xl border border-line-strong bg-bg-raised shadow-(--shadow) md:max-h-full md:h-full md:w-full md:rounded-none md:border-y-0 md:border-r-0 md:border-l">
         <button
           type="button"
           onClick={close}
           className="mx-auto mt-2.5 block h-1 w-[34px] rounded-full bg-line-strong md:hidden"
           aria-label="Close"
         />
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Close"
+          className="absolute right-3 top-3 hidden font-mono text-xs text-ink-faint hover:text-ink-dim md:block"
+        >
+          Close
+        </button>
         <div className="p-4 pt-3.5 md:pt-4">
           {loading && (
             <div>
