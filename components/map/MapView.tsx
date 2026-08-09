@@ -290,7 +290,12 @@ export default function MapView() {
 
     mapControls.register({
       refresh: () => refreshRef.current(),
-      flyTo: (lngLat) => map.easeTo({ center: lngLat, duration: 600 }),
+      flyTo: (lngLat, options) =>
+        map.easeTo({
+          center: lngLat,
+          zoom: options?.zoom != null ? Math.max(map.getZoom(), options.zoom) : map.getZoom(),
+          duration: 600,
+        }),
     });
 
     // mapbox-gl only calls resize() on window resize (trackResize), not on

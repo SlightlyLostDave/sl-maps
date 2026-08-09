@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { assignCategoryShapes } from "@/lib/map/categoryStyle";
 import SidebarShell from "./SidebarShell";
 import FilterPanel, { type CategoryItem } from "./FilterPanel";
+import CoordinateSearch from "./CoordinateSearch";
 
 const PAGE_SIZE = 1000;
 
@@ -71,6 +72,7 @@ export default async function Sidebar() {
 
   return (
     <SidebarShell>
+      <CoordinateSearch />
       <FilterPanel
         categories={items}
         totalCount={aggregates.totalCount}

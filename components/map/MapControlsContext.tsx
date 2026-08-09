@@ -4,7 +4,7 @@ import { createContext, useContext, useRef, type ReactNode } from "react";
 
 type MapControls = {
   refresh: () => void;
-  flyTo: (lngLat: [number, number]) => void;
+  flyTo: (lngLat: [number, number], options?: { zoom?: number }) => void;
 };
 
 type MapControlsRegistry = MapControls & {
@@ -25,7 +25,7 @@ export function MapControlsProvider({ children }: { children: ReactNode }) {
 
   const value: MapControlsRegistry = {
     refresh: () => controlsRef.current.refresh(),
-    flyTo: (lngLat) => controlsRef.current.flyTo(lngLat),
+    flyTo: (lngLat, options) => controlsRef.current.flyTo(lngLat, options),
     register: (controls) => {
       controlsRef.current = controls;
     },
