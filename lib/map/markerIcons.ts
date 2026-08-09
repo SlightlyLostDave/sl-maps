@@ -16,7 +16,7 @@ const PIXEL_RATIO = 3;
 const HEAD_RADIUS = WIDTH * 0.5;
 const HEAD = { x: WIDTH / 2, y: HEAD_RADIUS + 2 };
 const TIP = { x: WIDTH / 2, y: HEIGHT - 1 };
-const BADGE_RADIUS = WIDTH * 0.35;
+const BADGE_RADIUS = WIDTH * 0.4;
 
 // Angle (from the horizontal, canvas convention) of the two points where
 // the head circle's outline stops and the taper to the tip begins. Derived
