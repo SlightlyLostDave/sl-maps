@@ -1,5 +1,11 @@
 "use client";
 
+import { HugeiconsIcon } from "@hugeicons/react";
+import { MapPinPlusIcon, GpsSignal01Icon } from "@hugeicons/core-free-icons";
+
+const buttonClass =
+  "grid h-8 w-8 place-items-center rounded-[4px] text-ink-dim hover:text-ink hover:border-crimson";
+
 export default function AddPlacemarkToolbar({
   addMode,
   onToggleAddMode,
@@ -12,28 +18,30 @@ export default function AddPlacemarkToolbar({
   locationError?: string | null;
 }) {
   return (
-    <div className="absolute left-3 top-3 z-10 flex flex-col items-start gap-2">
-      <div className="flex gap-1.5 rounded-md border border-line-strong bg-bg-raised p-1 shadow-(--shadow)">
+    <div className="absolute right-3 top-23 z-10 flex flex-col items-end gap-2">
+      <div className="flex flex-col gap-1.5 rounded-md border border-line-strong bg-bg-raised p-1 shadow-(--shadow)">
         <button
           type="button"
           onClick={onToggleAddMode}
           aria-pressed={addMode}
-          className={`rounded-[4px] px-3 py-1.5 font-mono text-xs transition-colors ${
-            addMode ? "bg-crimson text-on-crimson" : "text-ink-dim hover:text-ink"
-          }`}
+          aria-label={addMode ? "Click the map to place it" : "Add placemark"}
+          title={addMode ? "Click the map to place it" : "Add placemark"}
+          className={`${buttonClass} ${addMode ? "bg-crimson text-on-crimson" : ""}`}
         >
-          {addMode ? "Click the map…" : "+ Add placemark"}
+          <HugeiconsIcon icon={MapPinPlusIcon} size={16} strokeWidth={1.5} />
         </button>
         <button
           type="button"
           onClick={onUseLocation}
-          className="rounded-[4px] px-3 py-1.5 font-mono text-xs text-ink-dim hover:text-ink"
+          aria-label="Use my location"
+          title="Use my location"
+          className={buttonClass}
         >
-          Use my location
+          <HugeiconsIcon icon={GpsSignal01Icon} size={16} strokeWidth={1.5} />
         </button>
       </div>
       {locationError && (
-        <div className="rounded-md border border-crimson-deep bg-crimson-wash px-3 py-1.5 text-xs text-crimson-lift shadow-(--shadow)">
+        <div className="max-w-50 rounded-md border border-crimson-deep bg-crimson-wash px-3 py-1.5 text-xs text-crimson-lift shadow-(--shadow)">
           {locationError}
         </div>
       )}

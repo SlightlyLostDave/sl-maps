@@ -142,8 +142,11 @@ class ZoomControl implements mapboxgl.IControl {
 
   onAdd(map: mapboxgl.Map) {
     const container = document.createElement("div");
+    // mapboxgl only applies its default 10px top-right margin to elements
+    // carrying the "mapboxgl-ctrl" class (see NavigationControl); without it
+    // this custom control renders flush against the map edge.
     container.className =
-      "flex flex-col gap-1.5 rounded-md border border-line-strong bg-bg-raised p-1 shadow-(--shadow)";
+      "mapboxgl-ctrl mr-3! mt-3! flex flex-col gap-1.5 rounded-md border border-line-strong bg-bg-raised p-1 shadow-(--shadow)";
 
     const makeButton = (label: string, ariaLabel: string, onClick: () => void) => {
       const btn = document.createElement("button");
@@ -179,6 +182,7 @@ export default function MapView() {
   const inFlightRef = useRef(0);
   const pendingCenterRef = useRef<[number, number] | null>(null);
   const addModeRef = useRef(false);
+  const draftMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -190,6 +194,10 @@ export default function MapView() {
   const filtersKey = JSON.stringify(filters);
   const { isPending: filtersPending } = useFilterTransition();
   const mapControls = useMapControls();
+
+  const isCreating = searchParams.get("id") === "new";
+  const draftLat = searchParams.get("lat");
+  const draftLon = searchParams.get("lon");
 
   function handleUseLocation() {
     setLocationError(null);
@@ -403,10 +411,29 @@ export default function MapView() {
 
       applyCategoryExpressions(map, categoryStylesRef.current);
 
-      map.on("mouseenter", CLUSTER_CIRCLE_LAYER, () => (map.getCanvas().style.cursor = "pointer"));
-      map.on("mouseleave", CLUSTER_CIRCLE_LAYER, () => (map.getCanvas().style.cursor = ""));
-      map.on("mouseenter", POINT_LAYER, () => (map.getCanvas().style.cursor = "pointer"));
-      map.on("mouseleave", POINT_LAYER, () => (map.getCanvas().style.cursor = ""));
+      // In add-mode, hovering an existing pin/cluster doesn't lead anywhere
+      // (the click handler below bails on hits), so the cursor should stay
+      // crosshair instead of flipping to pointer and back.
+      map.on(
+        "mouseenter",
+        CLUSTER_CIRCLE_LAYER,
+        () => (map.getCanvas().style.cursor = addModeRef.current ? "crosshair" : "pointer"),
+      );
+      map.on(
+        "mouseleave",
+        CLUSTER_CIRCLE_LAYER,
+        () => (map.getCanvas().style.cursor = addModeRef.current ? "crosshair" : ""),
+      );
+      map.on(
+        "mouseenter",
+        POINT_LAYER,
+        () => (map.getCanvas().style.cursor = addModeRef.current ? "crosshair" : "pointer"),
+      );
+      map.on(
+        "mouseleave",
+        POINT_LAYER,
+        () => (map.getCanvas().style.cursor = addModeRef.current ? "crosshair" : ""),
+      );
 
       map.on("click", CLUSTER_CIRCLE_LAYER, (event) => {
         const [feature] = map.queryRenderedFeatures(event.point, { layers: [CLUSTER_CIRCLE_LAYER] });
@@ -474,6 +501,8 @@ export default function MapView() {
     return () => {
       if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
       resizeObserver.disconnect();
+      draftMarkerRef.current?.remove();
+      draftMarkerRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -491,6 +520,38 @@ export default function MapView() {
       mapRef.current.getCanvas().style.cursor = addMode ? "crosshair" : "";
     }
   }, [addMode]);
+
+  // Show a draggable marker at the pending create location so the user can
+  // see and fine-tune the pin's position while the "new placemark" form is
+  // open, instead of only finding out where it landed after saving.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+
+    if (isCreating && draftLat && draftLon) {
+      const lngLat: [number, number] = [Number(draftLon), Number(draftLat)];
+      if (!draftMarkerRef.current) {
+        draftMarkerRef.current = new mapboxgl.Marker({
+          color: cssVar("--crimson", "#d5202b"),
+          draggable: true,
+        })
+          .setLngLat(lngLat)
+          .addTo(map);
+        draftMarkerRef.current.on("dragend", () => {
+          const pos = draftMarkerRef.current!.getLngLat();
+          const params = new URLSearchParams(window.location.search);
+          params.set("lat", String(pos.lat));
+          params.set("lon", String(pos.lng));
+          window.history.pushState(null, "", `?${params.toString()}`);
+        });
+      } else {
+        draftMarkerRef.current.setLngLat(lngLat);
+      }
+    } else if (draftMarkerRef.current) {
+      draftMarkerRef.current.remove();
+      draftMarkerRef.current = null;
+    }
+  }, [isCreating, draftLat, draftLon, mapLoaded]);
 
   // Keep the ref in sync and re-fetch whenever the URL-derived filters
   // change. filtersRef exists because map event handlers (click, moveend)
