@@ -13,10 +13,17 @@ import {
 import { iconName, registerShapeIcons } from '@/lib/map/shapeIcons';
 import MapLoadingOverlay from './MapLoadingOverlay';
 import AddPlacemarkToolbar from './AddPlacemarkToolbar';
+import BasemapSwitcher from './BasemapSwitcher';
 import { useFilterTransition } from './FilterTransitionContext';
 import { useMapControls } from './MapControlsContext';
+import {
+  BASEMAPS,
+  loadStoredBasemapId,
+  otherBasemapId,
+  saveBasemapId,
+  type BasemapId,
+} from '@/lib/map/basemaps';
 
-const MAP_STYLE = 'mapbox://styles/mapbox/dark-v11';
 const SOURCE_ID = 'placemarks';
 const CLUSTER_HALO_LAYER = 'placemarks-cluster-halo';
 const CLUSTER_CIRCLE_LAYER = 'placemarks-cluster-circle';
@@ -216,6 +223,9 @@ export default function MapView() {
   const [isFetching, setIsFetching] = useState(false);
   const [addMode, setAddMode] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [basemapId, setBasemapId] = useState<BasemapId>(() =>
+    loadStoredBasemapId(),
+  );
 
   const searchParams = useSearchParams();
   const filters = parseFilters(searchParams);
@@ -247,6 +257,13 @@ export default function MapView() {
       () => setLocationError('Location permission was denied.'),
       { enableHighAccuracy: true, timeout: 10000 },
     );
+  }
+
+  function handleToggleBasemap() {
+    const next = otherBasemapId(basemapId);
+    mapRef.current?.setStyle(BASEMAPS[next].url);
+    setBasemapId(next);
+    saveBasemapId(next);
   }
 
   // Fetch categories once and (re)apply the icon-image / icon-color match
@@ -281,12 +298,19 @@ export default function MapView() {
 
     const map = new mapboxgl.Map({
       container: containerRef.current,
-      style: MAP_STYLE,
+      // Read once on mount only — later switches go through setStyle(),
+      // not a re-run of this effect (see the eslint-disable-next-line note
+      // on this effect's dependency array below).
+      style: BASEMAPS[basemapId].url,
       center: [-80.5, 44.5],
       zoom: 6,
+      attributionControl: false,
     });
     mapRef.current = map;
     map.addControl(new ZoomControl(), 'top-right');
+    // Freed up bottom-right (Mapbox's default attribution anchor) for
+    // BasemapSwitcher by moving attribution to bottom-left instead.
+    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
 
     mapControls.register({
       refresh: () => refreshRef.current(),
@@ -374,8 +398,12 @@ export default function MapView() {
     }
     refreshRef.current = refresh;
 
-    map.on('load', () => {
-      setMapLoaded(true);
+    // setStyle() (used by the basemap switcher) wipes every source/layer/
+    // image not defined in the style itself and fires 'style.load' — unlike
+    // 'load', which only ever fires once per Map instance. Everything that
+    // setStyle destroys has to be re-added here so it reruns on every style
+    // load, including the first.
+    map.on('style.load', () => {
       quietenBasemap(map);
       registerShapeIcons(map);
 
@@ -457,6 +485,22 @@ export default function MapView() {
       });
 
       applyCategoryExpressions(map, categoryStylesRef.current);
+      // setStyle() also clears the source's data along with the source
+      // itself, so placemarks need re-fetching on every style load, not
+      // just the first.
+      refresh();
+    });
+
+    map.on('load', () => {
+      setMapLoaded(true);
+
+      // Delegated listeners below are keyed by layer-id string on the
+      // Map/Style instance, not bound to the layer object — they survive
+      // setStyle() and re-apply automatically once a layer with the same id
+      // is re-added by the 'style.load' handler above. 'load' only ever
+      // fires once per Map instance, so registering them here (rather than
+      // in 'style.load') is what keeps them from stacking duplicates on
+      // every basemap switch.
 
       // In add-mode, hovering an existing pin/cluster doesn't lead anywhere
       // (the click handler below bails on hits), so the cursor should stay
@@ -556,8 +600,6 @@ export default function MapView() {
         map.getCanvas().style.cursor = '';
         openCreatePanel(event.lngLat.lat, event.lngLat.lng);
       });
-
-      refresh();
     });
 
     map.on('moveend', () => {
@@ -575,6 +617,9 @@ export default function MapView() {
     };
     // mapControls is read once to register this map instance's refresh/flyTo
     // into the shared context; it doesn't need to retrigger this effect.
+    // basemapId is also intentionally read once, only to seed the initial
+    // style — later switches go through map.setStyle() (handleToggleBasemap)
+    // rather than tearing down and recreating the whole map.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -639,6 +684,12 @@ export default function MapView() {
           onToggleAddMode={() => setAddMode((v) => !v)}
           onUseLocation={handleUseLocation}
           locationError={locationError}
+        />
+      )}
+      {mapLoaded && (
+        <BasemapSwitcher
+          activeBasemapId={basemapId}
+          onToggle={handleToggleBasemap}
         />
       )}
       {!mapLoaded && <MapLoadingOverlay />}
