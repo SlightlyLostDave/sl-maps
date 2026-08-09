@@ -1,27 +1,27 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
-import { createClient } from "@/lib/supabase/client";
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { createClient } from '@/lib/supabase/client';
 import {
   assignCategoryShapes,
   FALLBACK_CATEGORY_COLOR,
   type CategoryStyle,
-} from "@/lib/map/categoryStyle";
-import { iconName, registerShapeIcons } from "@/lib/map/shapeIcons";
-import MapLoadingOverlay from "./MapLoadingOverlay";
-import AddPlacemarkToolbar from "./AddPlacemarkToolbar";
-import { useFilterTransition } from "./FilterTransitionContext";
-import { useMapControls } from "./MapControlsContext";
+} from '@/lib/map/categoryStyle';
+import { iconName, registerShapeIcons } from '@/lib/map/shapeIcons';
+import MapLoadingOverlay from './MapLoadingOverlay';
+import AddPlacemarkToolbar from './AddPlacemarkToolbar';
+import { useFilterTransition } from './FilterTransitionContext';
+import { useMapControls } from './MapControlsContext';
 
-const MAP_STYLE = "mapbox://styles/mapbox/dark-v11";
-const SOURCE_ID = "placemarks";
-const CLUSTER_HALO_LAYER = "placemarks-cluster-halo";
-const CLUSTER_CIRCLE_LAYER = "placemarks-cluster-circle";
-const CLUSTER_COUNT_LAYER = "placemarks-cluster-count";
-const POINT_LAYER = "placemarks-point";
+const MAP_STYLE = 'mapbox://styles/mapbox/dark-v11';
+const SOURCE_ID = 'placemarks';
+const CLUSTER_HALO_LAYER = 'placemarks-cluster-halo';
+const CLUSTER_CIRCLE_LAYER = 'placemarks-cluster-circle';
+const CLUSTER_COUNT_LAYER = 'placemarks-cluster-count';
+const POINT_LAYER = 'placemarks-point';
 const LARGE_CLUSTER_THRESHOLD = 100;
 
 type PlacemarkFeature = GeoJSON.Feature<
@@ -38,7 +38,7 @@ type PlacemarkFeature = GeoJSON.Feature<
 >;
 type PlacemarkCollection = GeoJSON.FeatureCollection<
   GeoJSON.Geometry,
-  PlacemarkFeature["properties"]
+  PlacemarkFeature['properties']
 >;
 
 type Filters = {
@@ -48,11 +48,12 @@ type Filters = {
 };
 
 function parseFilters(params: URLSearchParams): Filters {
-  const catParam = params.get("cat");
-  const categoryIds = catParam ? catParam.split(",").filter(Boolean) : null;
-  const visitedParam = params.get("visited");
-  const visited = visitedParam === "1" ? true : visitedParam === "0" ? false : null;
-  const wantToGo = params.get("want_to_go") === "1";
+  const catParam = params.get('cat');
+  const categoryIds = catParam ? catParam.split(',').filter(Boolean) : null;
+  const visitedParam = params.get('visited');
+  const visited =
+    visitedParam === '1' ? true : visitedParam === '0' ? false : null;
+  const wantToGo = params.get('want_to_go') === '1';
   return { categoryIds, visited, wantToGo };
 }
 
@@ -63,15 +64,17 @@ function parseFilters(params: URLSearchParams): Filters {
 // whole source (no error event, tiles just come back empty), which is what
 // made pins vanish after panning into an area containing one.
 function toPointGeometry(geometry: GeoJSON.Geometry): GeoJSON.Geometry {
-  if (geometry.type === "MultiPoint") {
-    return { type: "Point", coordinates: geometry.coordinates[0] };
+  if (geometry.type === 'MultiPoint') {
+    return { type: 'Point', coordinates: geometry.coordinates[0] };
   }
   return geometry;
 }
 
 function cssVar(name: string, fallback: string) {
-  if (typeof window === "undefined") return fallback;
-  const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  if (typeof window === 'undefined') return fallback;
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
   return value || fallback;
 }
 
@@ -86,10 +89,10 @@ function quietenBasemap(map: mapboxgl.Map) {
   for (const layer of style.layers) {
     const id = layer.id.toLowerCase();
     try {
-      if (id.includes("poi")) {
-        map.setLayoutProperty(layer.id, "visibility", "none");
-      } else if (id.includes("road") && layer.type === "line") {
-        map.setPaintProperty(layer.id, "line-opacity", 0.35);
+      if (id.includes('poi')) {
+        map.setLayoutProperty(layer.id, 'visibility', 'none');
+      } else if (id.includes('road') && layer.type === 'line') {
+        map.setPaintProperty(layer.id, 'line-opacity', 0.35);
       }
     } catch {
       // Style layer ids can shift between Mapbox style versions; skip
@@ -97,8 +100,12 @@ function quietenBasemap(map: mapboxgl.Map) {
     }
   }
 
-  if (map.getLayer("water")) {
-    map.setPaintProperty("water", "fill-color", cssVar("--map-water", "#14211f"));
+  if (map.getLayer('water')) {
+    map.setPaintProperty(
+      'water',
+      'fill-color',
+      cssVar('--map-water', '#14211f'),
+    );
   }
 }
 
@@ -110,18 +117,31 @@ function buildCategoryExpressions(styles: Map<string, CategoryStyle>) {
     iconColorPairs.push(id, style.color);
   }
   return {
-    iconImageExpr: ["match", ["get", "category_id"], ...iconImagePairs, iconName("circle")],
-    iconColorExpr: ["match", ["get", "category_id"], ...iconColorPairs, FALLBACK_CATEGORY_COLOR],
+    iconImageExpr: [
+      'match',
+      ['get', 'category_id'],
+      ...iconImagePairs,
+      iconName('circle'),
+    ],
+    iconColorExpr: [
+      'match',
+      ['get', 'category_id'],
+      ...iconColorPairs,
+      FALLBACK_CATEGORY_COLOR,
+    ],
   } as const;
 }
 
-function applyCategoryExpressions(map: mapboxgl.Map, styles: Map<string, CategoryStyle>) {
+function applyCategoryExpressions(
+  map: mapboxgl.Map,
+  styles: Map<string, CategoryStyle>,
+) {
   if (styles.size === 0 || !map.getLayer(POINT_LAYER)) return;
   const { iconImageExpr, iconColorExpr } = buildCategoryExpressions(styles);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  map.setLayoutProperty(POINT_LAYER, "icon-image", iconImageExpr as any);
+  map.setLayoutProperty(POINT_LAYER, 'icon-image', iconImageExpr as any);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  map.setPaintProperty(POINT_LAYER, "icon-color", iconColorExpr as any);
+  map.setPaintProperty(POINT_LAYER, 'icon-color', iconColorExpr as any);
 }
 
 // Opens the create-placemark panel by setting the same `?id=new&lat=&lon=`
@@ -130,37 +150,41 @@ function applyCategoryExpressions(map: mapboxgl.Map, styles: Map<string, Categor
 // router.push() doesn't work on this fully-dynamic route).
 function openCreatePanel(lat: number, lon: number) {
   const params = new URLSearchParams(window.location.search);
-  params.set("id", "new");
-  params.set("lat", String(lat));
-  params.set("lon", String(lon));
-  params.delete("edit");
-  window.history.pushState(null, "", `?${params.toString()}`);
+  params.set('id', 'new');
+  params.set('lat', String(lat));
+  params.set('lon', String(lon));
+  params.delete('edit');
+  window.history.pushState(null, '', `?${params.toString()}`);
 }
 
 class ZoomControl implements mapboxgl.IControl {
   private container?: HTMLDivElement;
 
   onAdd(map: mapboxgl.Map) {
-    const container = document.createElement("div");
+    const container = document.createElement('div');
     // mapboxgl only applies its default 10px top-right margin to elements
     // carrying the "mapboxgl-ctrl" class (see NavigationControl); without it
     // this custom control renders flush against the map edge.
     container.className =
-      "mapboxgl-ctrl mr-3! mt-3! flex flex-col gap-1.5 rounded-md border border-line-strong bg-bg-raised p-1 shadow-(--shadow)";
+      'mapboxgl-ctrl mr-3! mt-3! flex flex-col gap-1.5 rounded-md border border-line-strong bg-bg-raised p-1 shadow-(--shadow)';
 
-    const makeButton = (label: string, ariaLabel: string, onClick: () => void) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
+    const makeButton = (
+      label: string,
+      ariaLabel: string,
+      onClick: () => void,
+    ) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
       btn.textContent = label;
-      btn.setAttribute("aria-label", ariaLabel);
+      btn.setAttribute('aria-label', ariaLabel);
       btn.className =
-        "grid h-8 w-8 place-items-center rounded-[4px] font-mono text-sm text-ink-dim hover:text-ink hover:border-crimson";
-      btn.addEventListener("click", onClick);
+        'grid h-8 w-8 place-items-center rounded-[4px] font-mono text-sm text-ink-dim hover:text-ink hover:border-crimson';
+      btn.addEventListener('click', onClick);
       return btn;
     };
 
-    container.appendChild(makeButton("+", "Zoom in", () => map.zoomIn()));
-    container.appendChild(makeButton("−", "Zoom out", () => map.zoomOut()));
+    container.appendChild(makeButton('+', 'Zoom in', () => map.zoomIn()));
+    container.appendChild(makeButton('−', 'Zoom out', () => map.zoomOut()));
 
     this.container = container;
     return container;
@@ -175,7 +199,11 @@ export default function MapView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const categoryStylesRef = useRef<Map<string, CategoryStyle>>(new Map());
-  const filtersRef = useRef<Filters>({ categoryIds: null, visited: null, wantToGo: false });
+  const filtersRef = useRef<Filters>({
+    categoryIds: null,
+    visited: null,
+    wantToGo: false,
+  });
   const refreshRef = useRef<() => void>(() => {});
   const moveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
@@ -195,9 +223,9 @@ export default function MapView() {
   const { isPending: filtersPending } = useFilterTransition();
   const mapControls = useMapControls();
 
-  const isCreating = searchParams.get("id") === "new";
-  const draftLat = searchParams.get("lat");
-  const draftLon = searchParams.get("lon");
+  const isCreating = searchParams.get('id') === 'new';
+  const draftLat = searchParams.get('lat');
+  const draftLon = searchParams.get('lon');
 
   function handleUseLocation() {
     setLocationError(null);
@@ -216,7 +244,7 @@ export default function MapView() {
           duration: 600,
         });
       },
-      () => setLocationError("Location permission was denied."),
+      () => setLocationError('Location permission was denied.'),
       { enableHighAccuracy: true, timeout: 10000 },
     );
   }
@@ -227,13 +255,14 @@ export default function MapView() {
     let cancelled = false;
     const supabase = createClient();
     supabase
-      .from("categories")
-      .select("id, color, sort_order")
-      .is("deleted_at", null)
+      .from('categories')
+      .select('id, color, sort_order')
+      .is('deleted_at', null)
       .then(({ data, error }) => {
         if (cancelled || error || !data) return;
         categoryStylesRef.current = assignCategoryShapes(data);
-        if (mapRef.current) applyCategoryExpressions(mapRef.current, categoryStylesRef.current);
+        if (mapRef.current)
+          applyCategoryExpressions(mapRef.current, categoryStylesRef.current);
       });
     return () => {
       cancelled = true;
@@ -245,7 +274,7 @@ export default function MapView() {
 
     const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     if (!mapboxToken) {
-      console.error("Missing NEXT_PUBLIC_MAPBOX_TOKEN environment variable.");
+      console.error('Missing NEXT_PUBLIC_MAPBOX_TOKEN environment variable.');
       return;
     }
     mapboxgl.accessToken = mapboxToken;
@@ -257,7 +286,7 @@ export default function MapView() {
       zoom: 6,
     });
     mapRef.current = map;
-    map.addControl(new ZoomControl(), "top-right");
+    map.addControl(new ZoomControl(), 'top-right');
 
     mapControls.register({
       refresh: () => refreshRef.current(),
@@ -295,7 +324,7 @@ export default function MapView() {
       inFlightRef.current += 1;
       setIsFetching(true);
 
-      const { data, error } = await supabase.rpc("placemarks_geojson", {
+      const { data, error } = await supabase.rpc('placemarks_geojson', {
         in_west: bounds.getWest(),
         in_south: bounds.getSouth(),
         in_east: bounds.getEast(),
@@ -319,7 +348,8 @@ export default function MapView() {
       const { visited, wantToGo } = filtersRef.current;
       const features = collection.features
         .filter((feature) => {
-          if (visited !== null && feature.properties.visited !== visited) return false;
+          if (visited !== null && feature.properties.visited !== visited)
+            return false;
           if (wantToGo && !feature.properties.want_to_go) return false;
           return true;
         })
@@ -335,77 +365,89 @@ export default function MapView() {
         }));
 
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
-      source.setData({ type: "FeatureCollection", features });
+      source.setData({ type: 'FeatureCollection', features });
     }
     refreshRef.current = refresh;
 
-    map.on("load", () => {
+    map.on('load', () => {
       setMapLoaded(true);
       quietenBasemap(map);
       registerShapeIcons(map);
 
       map.addSource(SOURCE_ID, {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
         cluster: true,
-        clusterMaxZoom: 15,
-        clusterRadius: 50,
+        clusterMaxZoom: 13,
+        clusterRadius: 25,
       });
 
       map.addLayer({
         id: CLUSTER_HALO_LAYER,
-        type: "circle",
+        type: 'circle',
         source: SOURCE_ID,
-        filter: ["all", ["has", "point_count"], [">=", ["get", "point_count"], LARGE_CLUSTER_THRESHOLD]],
+        filter: [
+          'all',
+          ['has', 'point_count'],
+          ['>=', ['get', 'point_count'], LARGE_CLUSTER_THRESHOLD],
+        ],
         paint: {
-          "circle-radius": 36,
-          "circle-color": cssVar("--crimson", "#d5202b"),
-          "circle-opacity": 0.15,
+          'circle-radius': 36,
+          'circle-color': cssVar('--crimson', '#d5202b'),
+          'circle-opacity': 0.15,
         },
       });
 
       map.addLayer({
         id: CLUSTER_CIRCLE_LAYER,
-        type: "circle",
+        type: 'circle',
         source: SOURCE_ID,
-        filter: ["has", "point_count"],
+        filter: ['has', 'point_count'],
         paint: {
-          "circle-color": cssVar("--crimson", "#d5202b"),
-          "circle-radius": ["step", ["get", "point_count"], 17, 25, 22, LARGE_CLUSTER_THRESHOLD, 29],
-          "circle-stroke-width": 2,
-          "circle-stroke-color": cssVar("--pin-stroke", "#0c0b09"),
+          'circle-color': cssVar('--crimson', '#d5202b'),
+          'circle-radius': [
+            'step',
+            ['get', 'point_count'],
+            17,
+            25,
+            22,
+            LARGE_CLUSTER_THRESHOLD,
+            29,
+          ],
+          'circle-stroke-width': 2,
+          'circle-stroke-color': cssVar('--pin-stroke', '#0c0b09'),
         },
       });
 
       map.addLayer({
         id: CLUSTER_COUNT_LAYER,
-        type: "symbol",
+        type: 'symbol',
         source: SOURCE_ID,
-        filter: ["has", "point_count"],
+        filter: ['has', 'point_count'],
         layout: {
-          "text-field": ["get", "point_count_abbreviated"],
-          "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
-          "text-size": 11,
+          'text-field': ['get', 'point_count_abbreviated'],
+          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
+          'text-size': 11,
         },
         paint: {
-          "text-color": cssVar("--on-crimson", "#fff8ea"),
+          'text-color': cssVar('--on-crimson', '#fff8ea'),
         },
       });
 
       map.addLayer({
         id: POINT_LAYER,
-        type: "symbol",
+        type: 'symbol',
         source: SOURCE_ID,
-        filter: ["!", ["has", "point_count"]],
+        filter: ['!', ['has', 'point_count']],
         layout: {
-          "icon-image": iconName("circle"),
-          "icon-size": 0.5,
-          "icon-allow-overlap": true,
+          'icon-image': iconName('circle'),
+          'icon-size': 0.5,
+          'icon-allow-overlap': true,
         },
         paint: {
-          "icon-color": FALLBACK_CATEGORY_COLOR,
-          "icon-halo-color": cssVar("--pin-stroke", "#0c0b09"),
-          "icon-halo-width": 1.5,
+          'icon-color': FALLBACK_CATEGORY_COLOR,
+          'icon-halo-color': cssVar('--pin-stroke', '#0c0b09'),
+          'icon-halo-width': 1.5,
         },
       });
 
@@ -415,30 +457,45 @@ export default function MapView() {
       // (the click handler below bails on hits), so the cursor should stay
       // crosshair instead of flipping to pointer and back.
       map.on(
-        "mouseenter",
+        'mouseenter',
         CLUSTER_CIRCLE_LAYER,
-        () => (map.getCanvas().style.cursor = addModeRef.current ? "crosshair" : "pointer"),
+        () =>
+          (map.getCanvas().style.cursor = addModeRef.current
+            ? 'crosshair'
+            : 'pointer'),
       );
       map.on(
-        "mouseleave",
+        'mouseleave',
         CLUSTER_CIRCLE_LAYER,
-        () => (map.getCanvas().style.cursor = addModeRef.current ? "crosshair" : ""),
+        () =>
+          (map.getCanvas().style.cursor = addModeRef.current
+            ? 'crosshair'
+            : ''),
       );
       map.on(
-        "mouseenter",
+        'mouseenter',
         POINT_LAYER,
-        () => (map.getCanvas().style.cursor = addModeRef.current ? "crosshair" : "pointer"),
+        () =>
+          (map.getCanvas().style.cursor = addModeRef.current
+            ? 'crosshair'
+            : 'pointer'),
       );
       map.on(
-        "mouseleave",
+        'mouseleave',
         POINT_LAYER,
-        () => (map.getCanvas().style.cursor = addModeRef.current ? "crosshair" : ""),
+        () =>
+          (map.getCanvas().style.cursor = addModeRef.current
+            ? 'crosshair'
+            : ''),
       );
 
-      map.on("click", CLUSTER_CIRCLE_LAYER, (event) => {
-        const [feature] = map.queryRenderedFeatures(event.point, { layers: [CLUSTER_CIRCLE_LAYER] });
+      map.on('click', CLUSTER_CIRCLE_LAYER, (event) => {
+        const [feature] = map.queryRenderedFeatures(event.point, {
+          layers: [CLUSTER_CIRCLE_LAYER],
+        });
         const clusterId = feature?.properties?.cluster_id;
-        if (clusterId == null || !feature || feature.geometry.type !== "Point") return;
+        if (clusterId == null || !feature || feature.geometry.type !== 'Point')
+          return;
         const center = feature.geometry.coordinates as [number, number];
         const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
         source.getClusterExpansionZoom(clusterId, (err, zoom) => {
@@ -447,8 +504,10 @@ export default function MapView() {
         });
       });
 
-      map.on("click", POINT_LAYER, (event) => {
-        const [feature] = map.queryRenderedFeatures(event.point, { layers: [POINT_LAYER] });
+      map.on('click', POINT_LAYER, (event) => {
+        const [feature] = map.queryRenderedFeatures(event.point, {
+          layers: [POINT_LAYER],
+        });
         const id = feature?.properties?.id ?? feature?.id;
         if (id == null) return;
         // Opening the drawer shrinks the map container (see the
@@ -456,11 +515,14 @@ export default function MapView() {
         // old center in the new, narrower canvas — re-queue the clicked
         // placemark's coordinates so it ends up centered in that view
         // instead of drifting toward the edge.
-        if (feature?.geometry.type === "Point") {
-          pendingCenterRef.current = feature.geometry.coordinates as [number, number];
+        if (feature?.geometry.type === 'Point') {
+          pendingCenterRef.current = feature.geometry.coordinates as [
+            number,
+            number,
+          ];
         }
         const params = new URLSearchParams(window.location.search);
-        params.set("id", String(id));
+        params.set('id', String(id));
         // Plain router.push() here round-trips through the server (this
         // route reads cookies, so it's fully dynamic) and, per
         // node_modules/next/dist/docs/01-app/02-guides/single-page-applications.md
@@ -470,7 +532,7 @@ export default function MapView() {
         // client state, so use the documented shallow-routing escape hatch
         // (history.pushState, which Next's router patches to stay in sync
         // with useSearchParams) instead of router.push().
-        window.history.pushState(null, "", `?${params.toString()}`);
+        window.history.pushState(null, '', `?${params.toString()}`);
       });
 
       // Generic background click for add-mode — registered separately from
@@ -478,7 +540,7 @@ export default function MapView() {
       // area, not a specific layer. Bails if the click actually hit an
       // existing point or cluster so clicking a pin still opens its detail
       // instead of creating a duplicate underneath it.
-      map.on("click", (event) => {
+      map.on('click', (event) => {
         if (!addModeRef.current) return;
         const hits = map.queryRenderedFeatures(event.point, {
           layers: [POINT_LAYER, CLUSTER_CIRCLE_LAYER],
@@ -486,14 +548,14 @@ export default function MapView() {
         if (hits.length > 0) return;
         addModeRef.current = false;
         setAddMode(false);
-        map.getCanvas().style.cursor = "";
+        map.getCanvas().style.cursor = '';
         openCreatePanel(event.lngLat.lat, event.lngLat.lng);
       });
 
       refresh();
     });
 
-    map.on("moveend", () => {
+    map.on('moveend', () => {
       if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
       moveTimeoutRef.current = setTimeout(() => refreshRef.current(), 300);
     });
@@ -517,7 +579,7 @@ export default function MapView() {
   useEffect(() => {
     addModeRef.current = addMode;
     if (mapRef.current) {
-      mapRef.current.getCanvas().style.cursor = addMode ? "crosshair" : "";
+      mapRef.current.getCanvas().style.cursor = addMode ? 'crosshair' : '';
     }
   }, [addMode]);
 
@@ -532,17 +594,17 @@ export default function MapView() {
       const lngLat: [number, number] = [Number(draftLon), Number(draftLat)];
       if (!draftMarkerRef.current) {
         draftMarkerRef.current = new mapboxgl.Marker({
-          color: cssVar("--crimson", "#d5202b"),
+          color: cssVar('--crimson', '#d5202b'),
           draggable: true,
         })
           .setLngLat(lngLat)
           .addTo(map);
-        draftMarkerRef.current.on("dragend", () => {
+        draftMarkerRef.current.on('dragend', () => {
           const pos = draftMarkerRef.current!.getLngLat();
           const params = new URLSearchParams(window.location.search);
-          params.set("lat", String(pos.lat));
-          params.set("lon", String(pos.lng));
-          window.history.pushState(null, "", `?${params.toString()}`);
+          params.set('lat', String(pos.lat));
+          params.set('lon', String(pos.lng));
+          window.history.pushState(null, '', `?${params.toString()}`);
         });
       } else {
         draftMarkerRef.current.setLngLat(lngLat);
