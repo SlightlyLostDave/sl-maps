@@ -12,7 +12,7 @@ import {
 } from "@/lib/map/categoryStyle";
 import { iconName, registerShapeIcons } from "@/lib/map/shapeIcons";
 import MapLoadingOverlay from "./MapLoadingOverlay";
-import Spinner from "@/components/ui/Spinner";
+import { useFilterTransition } from "./FilterTransitionContext";
 
 const MAP_STYLE = "mapbox://styles/mapbox/dark-v11";
 const SOURCE_ID = "placemarks";
@@ -169,6 +169,7 @@ export default function MapView() {
   const searchParams = useSearchParams();
   const filters = parseFilters(searchParams);
   const filtersKey = JSON.stringify(filters);
+  const { isPending: filtersPending } = useFilterTransition();
 
   // Fetch categories once and (re)apply the icon-image / icon-color match
   // expressions whenever they load, including after the map itself loads.
@@ -389,12 +390,7 @@ export default function MapView() {
     <>
       <div ref={containerRef} className="h-full w-full" />
       {!mapLoaded && <MapLoadingOverlay />}
-      {mapLoaded && isFetching && (
-        <div className="absolute bottom-3 left-3 z-10 flex items-center gap-1.5 rounded-full border border-line-strong bg-bg-raised px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.1em] text-ink-dim shadow-(--shadow)">
-          <Spinner size="xs" />
-          Updating
-        </div>
-      )}
+      {mapLoaded && (filtersPending || isFetching) && <MapLoadingOverlay dim />}
     </>
   );
 }

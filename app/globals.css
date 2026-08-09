@@ -156,6 +156,31 @@ body {
   line-height: 0.94;
 }
 
+.themed-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--rule-strong) transparent;
+}
+
+.themed-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.themed-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.themed-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--rule-strong);
+  border-radius: var(--radius-s);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.themed-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ink-faint);
+}
+
 .eyebrow {
   font-family: var(--font-archivo), sans-serif;
   font-size: 0.688rem;

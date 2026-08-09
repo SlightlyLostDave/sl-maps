@@ -3,6 +3,7 @@ import MapView from "@/components/map/MapView";
 import Sidebar from "@/components/map/Sidebar";
 import DetailDrawer from "@/components/map/DetailDrawer";
 import MapExplorerSkeleton from "@/components/map/MapExplorerSkeleton";
+import { FilterTransitionProvider } from "@/components/map/FilterTransitionContext";
 
 export default function MapExplorer() {
   return (
@@ -12,11 +13,13 @@ export default function MapExplorer() {
           boundary for Next.js to allow the rest of the page to render
           without forcing full client-side rendering. */}
       <Suspense fallback={<MapExplorerSkeleton />}>
-        <Sidebar />
-        <div className="relative flex-1">
-          <MapView />
-          <DetailDrawer />
-        </div>
+        <FilterTransitionProvider>
+          <Sidebar />
+          <div className="relative flex-1">
+            <MapView />
+            <DetailDrawer />
+          </div>
+        </FilterTransitionProvider>
       </Suspense>
     </div>
   );
