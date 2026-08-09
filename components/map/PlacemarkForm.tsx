@@ -221,7 +221,9 @@ export default function PlacemarkForm({
           className={inputClass}
         >
           <option value="">Choose a category…</option>
-          {categories.map((c) => (
+          {[...categories]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>

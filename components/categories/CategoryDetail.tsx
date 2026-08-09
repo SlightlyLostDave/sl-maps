@@ -204,11 +204,13 @@ export default async function CategoryDetail({
                 className={inputClass}
               >
                 <option value="">Choose a replacement…</option>
-                {otherCategories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                {[...otherCategories]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
               </select>
             </label>
           )}
@@ -271,11 +273,13 @@ function CategoryFields({
           className={inputClass}
         >
           <option value="">No parent (top-level)</option>
-          {parentOptions.map((option) => (
-            <option key={option.id} value={option.id}>
-              {option.name}
-            </option>
-          ))}
+          {[...parentOptions]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.name}
+              </option>
+            ))}
         </select>
       </label>
 
