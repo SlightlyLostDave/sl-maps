@@ -6,7 +6,6 @@ import CategoryFilter from "./CategoryFilter";
 import StatusFilter from "./StatusFilter";
 import SearchField from "./SearchField";
 import { useFilterParams } from "./useFilterParams";
-import type { CategoryShape } from "@/lib/map/categoryStyle";
 
 export type CategoryItem = {
   id: string;
@@ -14,7 +13,6 @@ export type CategoryItem = {
   name: string;
   color: string;
   parentId: string | null;
-  shape: CategoryShape;
   count: number;
 };
 

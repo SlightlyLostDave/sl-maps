@@ -6,11 +6,15 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { createClient } from '@/lib/supabase/client';
 import {
-  assignCategoryShapes,
-  FALLBACK_CATEGORY_COLOR,
-  type CategoryStyle,
+  buildCategoryStyles,
+  type CategoryIconStyle,
 } from '@/lib/map/categoryStyle';
-import { iconName, registerShapeIcons } from '@/lib/map/shapeIcons';
+import {
+  pinIconName,
+  FALLBACK_PIN_NAME,
+  registerFallbackPin,
+  registerCategoryIcons,
+} from '@/lib/map/markerIcons';
 import MapLoadingOverlay from './MapLoadingOverlay';
 import AddPlacemarkToolbar from './AddPlacemarkToolbar';
 import BasemapSwitcher from './BasemapSwitcher';
@@ -41,6 +45,7 @@ type PlacemarkFeature = GeoJSON.Feature<
     visited: boolean;
     want_to_go: boolean;
     tags: string;
+    icon_image?: string;
   }
 >;
 type PlacemarkCollection = GeoJSON.FeatureCollection<
@@ -53,6 +58,45 @@ type Filters = {
   visited: boolean | null;
   wantToGo: boolean;
 };
+
+const DEFAULT_CENTER: [number, number] = [-80.5, 44.5];
+const DEFAULT_ZOOM = 6;
+
+// Map viewport uses its own `mlat`/`mlng`/`z` params, distinct from the
+// `lat`/`lon` params used elsewhere in this file for a draft placemark's
+// location, so the two don't collide when both are present in the URL.
+function parseInitialView(
+  params: URLSearchParams,
+): { center: [number, number]; zoom: number } | null {
+  const lat = Number(params.get('mlat'));
+  const lng = Number(params.get('mlng'));
+  const zoom = Number(params.get('z'));
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    !Number.isFinite(zoom) ||
+    lat < -90 ||
+    lat > 90 ||
+    lng < -180 ||
+    lng > 180
+  ) {
+    return null;
+  }
+  return { center: [lng, lat], zoom };
+}
+
+// Called on every moveend so reloading or sharing the URL restores the same
+// viewport. replaceState (not pushState) keeps camera panning out of browser
+// history — only explicit navigations like opening a placemark should be
+// back-button stops.
+function updateViewParams(map: mapboxgl.Map) {
+  const center = map.getCenter();
+  const params = new URLSearchParams(window.location.search);
+  params.set('mlat', center.lat.toFixed(5));
+  params.set('mlng', center.lng.toFixed(5));
+  params.set('z', map.getZoom().toFixed(2));
+  window.history.replaceState(null, '', `?${params.toString()}`);
+}
 
 function parseFilters(params: URLSearchParams): Filters {
   const catParam = params.get('cat');
@@ -116,41 +160,6 @@ function quietenBasemap(map: mapboxgl.Map) {
   }
 }
 
-function buildCategoryExpressions(styles: Map<string, CategoryStyle>) {
-  const iconImagePairs: string[] = [];
-  const iconColorPairs: string[] = [];
-  for (const [id, style] of styles) {
-    iconImagePairs.push(id, iconName(style.shape));
-    iconColorPairs.push(id, style.color);
-  }
-  return {
-    iconImageExpr: [
-      'match',
-      ['get', 'category_id'],
-      ...iconImagePairs,
-      iconName('circle'),
-    ],
-    iconColorExpr: [
-      'match',
-      ['get', 'category_id'],
-      ...iconColorPairs,
-      FALLBACK_CATEGORY_COLOR,
-    ],
-  } as const;
-}
-
-function applyCategoryExpressions(
-  map: mapboxgl.Map,
-  styles: Map<string, CategoryStyle>,
-) {
-  if (styles.size === 0 || !map.getLayer(POINT_LAYER)) return;
-  const { iconImageExpr, iconColorExpr } = buildCategoryExpressions(styles);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  map.setLayoutProperty(POINT_LAYER, 'icon-image', iconImageExpr as any);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  map.setPaintProperty(POINT_LAYER, 'icon-color', iconColorExpr as any);
-}
-
 // Opens the create-placemark panel by setting the same `?id=new&lat=&lon=`
 // URL shape DetailDrawer reads, via the shallow-routing escape hatch used
 // throughout this file (see the point-click handler's comment for why
@@ -205,7 +214,7 @@ class ZoomControl implements mapboxgl.IControl {
 export default function MapView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  const categoryStylesRef = useRef<Map<string, CategoryStyle>>(new Map());
+  const categoryStylesRef = useRef<Map<string, CategoryIconStyle>>(new Map());
   const filtersRef = useRef<Filters>({
     categoryIds: null,
     visited: null,
@@ -266,20 +275,25 @@ export default function MapView() {
     saveBasemapId(next);
   }
 
-  // Fetch categories once and (re)apply the icon-image / icon-color match
-  // expressions whenever they load, including after the map itself loads.
+  // Fetch categories once and (re)register their pin images whenever they
+  // load, including after the map itself loads.
   useEffect(() => {
     let cancelled = false;
     const supabase = createClient();
     supabase
       .from('categories')
-      .select('id, color, sort_order')
+      .select('id, color, icon')
       .is('deleted_at', null)
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (cancelled || error || !data) return;
-        categoryStylesRef.current = assignCategoryShapes(data);
-        if (mapRef.current)
-          applyCategoryExpressions(mapRef.current, categoryStylesRef.current);
+        const styles = buildCategoryStyles(data);
+        const map = mapRef.current;
+        if (map) await registerCategoryIcons(map, styles);
+        if (cancelled) return;
+        categoryStylesRef.current = styles;
+        if (map) {
+          refreshRef.current();
+        }
       });
     return () => {
       cancelled = true;
@@ -296,14 +310,21 @@ export default function MapView() {
     }
     mapboxgl.accessToken = mapboxToken;
 
+    // Read once on mount only, same as basemapId below — a URL-present
+    // position takes priority over the last-viewed camera so shared/bookmarked
+    // links land where they point rather than wherever the map was left.
+    const initialView = parseInitialView(
+      new URLSearchParams(window.location.search),
+    );
+
     const map = new mapboxgl.Map({
       container: containerRef.current,
       // Read once on mount only — later switches go through setStyle(),
       // not a re-run of this effect (see the eslint-disable-next-line note
       // on this effect's dependency array below).
       style: BASEMAPS[basemapId].url,
-      center: [-80.5, 44.5],
-      zoom: 6,
+      center: initialView?.center ?? DEFAULT_CENTER,
+      zoom: initialView?.zoom ?? DEFAULT_ZOOM,
       attributionControl: false,
     });
     mapRef.current = map;
@@ -382,16 +403,31 @@ export default function MapView() {
           if (wantToGo && !feature.properties.want_to_go) return false;
           return true;
         })
-        .map((feature) => ({
-          ...feature,
-          geometry: toPointGeometry(feature.geometry),
-          // Supercluster (used internally by the clustered GeoJSON source)
-          // does not preserve each leaf feature's top-level `id` once
-          // features are clustered, so the click handler can't rely on
-          // feature.id — mirror it into properties, which clustering does
-          // preserve.
-          properties: { ...feature.properties, id: feature.id as string },
-        }));
+        .map((feature) => {
+          const pinName = pinIconName(feature.properties.category_id);
+          // The category's `icon` name might not resolve to a real
+          // HugeIcons asset (fetch/rasterize can fail — e.g. stale/invalid
+          // data), or the category's pin may not have registered yet; fall
+          // back to the generic pin rather than pointing icon-image at a
+          // name mapbox has never seen.
+          const icon_image = map.hasImage(pinName) ? pinName : FALLBACK_PIN_NAME;
+          return {
+            ...feature,
+            geometry: toPointGeometry(feature.geometry),
+            // Supercluster (used internally by the clustered GeoJSON
+            // source) does not preserve each leaf feature's top-level `id`
+            // once features are clustered, so the click handler can't rely
+            // on feature.id — mirror it into properties, which clustering
+            // does preserve. icon_image is similarly precomputed here
+            // (rather than as a mapbox style expression) since a category's
+            // pin image may not be registered yet when this runs.
+            properties: {
+              ...feature.properties,
+              id: feature.id as string,
+              icon_image,
+            },
+          };
+        });
 
       const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
       source.setData({ type: 'FeatureCollection', features });
@@ -403,9 +439,9 @@ export default function MapView() {
     // 'load', which only ever fires once per Map instance. Everything that
     // setStyle destroys has to be re-added here so it reruns on every style
     // load, including the first.
-    map.on('style.load', () => {
+    map.on('style.load', async () => {
       quietenBasemap(map);
-      registerShapeIcons(map);
+      registerFallbackPin(map);
 
       map.addSource(SOURCE_ID, {
         type: 'geojson',
@@ -473,18 +509,16 @@ export default function MapView() {
         source: SOURCE_ID,
         filter: ['!', ['has', 'point_count']],
         layout: {
-          'icon-image': iconName('circle'),
-          'icon-size': 0.5,
+          // Precomputed per-feature in refresh() below, since a category's
+          // pin image may not have finished registering when this runs.
+          'icon-image': ['coalesce', ['get', 'icon_image'], FALLBACK_PIN_NAME],
+          'icon-size': 1,
+          'icon-anchor': 'bottom',
           'icon-allow-overlap': true,
-        },
-        paint: {
-          'icon-color': FALLBACK_CATEGORY_COLOR,
-          'icon-halo-color': cssVar('--pin-stroke', '#0c0b09'),
-          'icon-halo-width': 1.5,
         },
       });
 
-      applyCategoryExpressions(map, categoryStylesRef.current);
+      await registerCategoryIcons(map, categoryStylesRef.current);
       // setStyle() also clears the source's data along with the source
       // itself, so placemarks need re-fetching on every style load, not
       // just the first.
@@ -603,6 +637,7 @@ export default function MapView() {
     });
 
     map.on('moveend', () => {
+      updateViewParams(map);
       if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
       moveTimeoutRef.current = setTimeout(() => refreshRef.current(), 300);
     });

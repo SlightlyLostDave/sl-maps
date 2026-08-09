@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { assignCategoryShapes } from "@/lib/map/categoryStyle";
 import SidebarShell from "./SidebarShell";
 import FilterPanel, { type CategoryItem } from "./FilterPanel";
 import CoordinateSearch from "./CoordinateSearch";
@@ -59,14 +58,12 @@ export default async function Sidebar() {
 
   if (error) throw error;
 
-  const styles = assignCategoryShapes(categories ?? []);
   const items: CategoryItem[] = (categories ?? []).map((category) => ({
     id: category.id,
     slug: category.slug,
     name: category.name,
     color: category.color,
     parentId: category.parent_id,
-    shape: styles.get(category.id)!.shape,
     count: aggregates.categoryCounts.get(category.id) ?? 0,
   }));
 

@@ -1,8 +1,7 @@
-"use client";
+'use client';
 
-import ShapeGlyph from "./ShapeGlyph";
-import { useFilterParams } from "./useFilterParams";
-import type { CategoryItem } from "./FilterPanel";
+import { useFilterParams } from './useFilterParams';
+import type { CategoryItem } from './FilterPanel';
 
 function CategoryRow({
   category,
@@ -22,31 +21,42 @@ function CategoryRow({
         onClick={onToggle}
         aria-pressed={active}
         className={`flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
-          indent ? "ml-6" : ""
+          indent ? 'ml-6' : ''
         } ${
           active
-            ? "bg-crimson-wash text-ink"
-            : "text-ink-dim hover:bg-ground-2 hover:text-ink"
+            ? 'bg-crimson-wash text-ink'
+            : 'text-ink-dim hover:bg-ground-2 hover:text-ink'
         }`}
       >
         <span className="flex min-w-0 items-center gap-2">
-          <ShapeGlyph shape={category.shape} color={category.color} />
+          <span
+            className="h-2.5 w-2.5 shrink-0 rounded-full"
+            style={{ background: category.color }}
+          />
           <span className="truncate">{category.name}</span>
         </span>
-        <span className="font-mono text-xs text-ink-faint">{category.count}</span>
+        <span className="font-mono text-xs text-ink-faint">
+          {category.count}
+        </span>
       </button>
     </li>
   );
 }
 
-export default function CategoryFilter({ categories }: { categories: CategoryItem[] }) {
+export default function CategoryFilter({
+  categories,
+}: {
+  categories: CategoryItem[];
+}) {
   const { activeCatIds, toggleCategory, setCategoryIds } = useFilterParams();
 
   const topLevel = categories
     .filter((c) => !c.parentId)
     .sort((a, b) => a.name.localeCompare(b.name));
   const childrenOf = (id: string) =>
-    categories.filter((c) => c.parentId === id).sort((a, b) => a.name.localeCompare(b.name));
+    categories
+      .filter((c) => c.parentId === id)
+      .sort((a, b) => a.name.localeCompare(b.name));
   const allIds = categories.map((c) => c.id);
 
   return (
@@ -94,7 +104,9 @@ export default function CategoryFilter({ categories }: { categories: CategoryIte
           </li>
         ))}
         {categories.length === 0 && (
-          <li className="px-2 py-1.5 text-sm text-ink-faint">No categories yet.</li>
+          <li className="px-2 py-1.5 text-sm text-ink-faint">
+            No categories yet.
+          </li>
         )}
       </ul>
     </div>

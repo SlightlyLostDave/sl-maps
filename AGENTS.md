@@ -28,7 +28,7 @@ A personal field-mapping tool for tracking real-world "placemarks" (dive sites, 
 - `components/categories/`, `components/review/` — category management and backlog-placemark review UIs
 - `components/ui/` — shared primitives (`Skeleton.tsx`, `Spinner.tsx`, `SubmitButton.tsx`)
 - `lib/supabase/` — `client.ts`, `server.ts`, `middleware.ts` (`updateSession`)
-- `lib/map/` — `categoryStyle.ts`, `shapeIcons.ts`
+- `lib/map/` — `categoryStyle.ts`, `markerIcons.ts`
 - `lib/slug.ts` — shared `slugify`, kept outside `app/actions/` because `"use server"` files may only export async functions
 - `sql/` — incremental migrations (e.g. `0001_placemarks_needs_review.sql`)
 - `proxy.ts` (repo root) — Next.js 16 renamed `middleware.ts` to `proxy.ts`; this invokes `lib/supabase/middleware.ts`'s `updateSession` for auth session handling. It is the framework's replacement, not a stray file.
