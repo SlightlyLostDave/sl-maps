@@ -5,6 +5,7 @@ import {
   deleteCategory,
 } from "@/app/actions/categories";
 import SubmitButton from "@/components/ui/SubmitButton";
+import IconPicker from "@/components/categories/IconPicker";
 
 type CategoryDetailRow = {
   id: string;
@@ -22,6 +23,7 @@ type CategoryOption = { id: string; name: string };
 const ERROR_MESSAGES: Record<string, string> = {
   name_required: "Name is required.",
   invalid_json: "Attributes schema must be valid JSON (an object).",
+  invalid_icon: "Icon must be a valid HugeIcons icon name.",
   has_children:
     "This category has subcategories, or the chosen parent isn't a top-level category — categories can only nest one level deep.",
   needs_replacement:
@@ -181,8 +183,8 @@ export default async function CategoryDetail({
         </div>
       </form>
 
-      <section className="max-w-lg rounded-md border border-crimson-deep p-4">
-        <h3 className="mb-2 text-sm font-medium text-ink">Delete category</h3>
+      <section className="max-w-lg rounded-md border border-crimson-deep bg-crimson-wash p-4">
+        <h3 className="mb-2 text-sm font-medium text-crimson-lift">Delete category</h3>
         <form action={deleteWithId} className="flex flex-col gap-3">
           {childCount > 0 && (
             <p className="text-xs text-crimson-lift">
@@ -211,7 +213,11 @@ export default async function CategoryDetail({
             </label>
           )}
           <div>
-            <SubmitButton disabled={childCount > 0} className="self-start">
+            <SubmitButton
+              variant="outline"
+              disabled={childCount > 0}
+              className="self-start border-crimson-deep text-crimson-lift"
+            >
               {placemarkCount > 0 ? "Reassign & delete" : "Delete category"}
             </SubmitButton>
           </div>
@@ -241,28 +247,21 @@ function CategoryFields({
         />
       </label>
 
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-ink-dim">Color</span>
-        <input
-          type="color"
-          name="color"
-          defaultValue={category?.color ?? "#7C9A55"}
-          className={`${inputClass} h-10 w-20 p-1`}
-        />
-      </label>
+      <div className="flex items-start gap-3">
+        <label className="flex w-20 shrink-0 flex-col gap-1">
+          <span className="text-xs font-medium text-ink-dim">Color</span>
+          <input
+            type="color"
+            name="color"
+            defaultValue={category?.color ?? "#7C9A55"}
+            className={`${inputClass} h-9 w-20 p-1`}
+          />
+        </label>
 
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-ink-dim">Icon</span>
-        <input
-          type="text"
-          name="icon"
-          defaultValue={category?.icon ?? ""}
-          className={inputClass}
-        />
-        <span className="text-xs text-ink-faint">
-          Sprite name — not yet used by map rendering.
-        </span>
-      </label>
+        <div className="flex-1">
+          <IconPicker defaultValue={category?.icon} />
+        </div>
+      </div>
 
       <label className="flex flex-col gap-1">
         <span className="text-xs font-medium text-ink-dim">Parent category</span>

@@ -4,6 +4,12 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
+import hugeiconsNames from "@/lib/map/hugeiconsNames.json";
+
+const hugeiconsNameSet = new Set(hugeiconsNames as string[]);
+function iconExists(name: string) {
+  return hugeiconsNameSet.has(name);
+}
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -64,6 +70,7 @@ export async function createCategory(formData: FormData) {
 
   if (!name) redirect("/categories?id=new&error=name_required");
   if (attributesSchema === null) redirect("/categories?id=new&error=invalid_json");
+  if (icon && !iconExists(icon)) redirect("/categories?id=new&error=invalid_icon");
 
   if (parentId) {
     const { data: parent } = await supabase
@@ -135,6 +142,7 @@ export async function updateCategory(id: string, formData: FormData) {
 
   if (!name) redirect(`/categories?id=${id}&error=name_required`);
   if (attributesSchema === null) redirect(`/categories?id=${id}&error=invalid_json`);
+  if (icon && !iconExists(icon)) redirect(`/categories?id=${id}&error=invalid_icon`);
 
   const { count: childCount } = await supabase
     .from("categories")
