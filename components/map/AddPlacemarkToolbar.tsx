@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { HugeiconsIcon } from "@hugeicons/react";
-import { MapPinPlusIcon, GpsSignal01Icon } from "@hugeicons/core-free-icons";
+import { HugeiconsIcon } from '@hugeicons/react';
+import { MapPinPlusIcon, Gps01Icon } from '@hugeicons/core-free-icons';
 
 const buttonClass =
-  "grid h-8 w-8 place-items-center rounded-[4px] text-ink-dim hover:text-ink hover:border-crimson";
+  'grid h-8 w-8 place-items-center rounded-[4px] text-ink-dim hover:text-ink hover:border-crimson';
 
 export default function AddPlacemarkToolbar({
   addMode,
@@ -24,9 +24,9 @@ export default function AddPlacemarkToolbar({
           type="button"
           onClick={onToggleAddMode}
           aria-pressed={addMode}
-          aria-label={addMode ? "Click the map to place it" : "Add placemark"}
-          title={addMode ? "Click the map to place it" : "Add placemark"}
-          className={`${buttonClass} ${addMode ? "bg-crimson text-on-crimson" : ""}`}
+          aria-label={addMode ? 'Click the map to place it' : 'Add placemark'}
+          title={addMode ? 'Click the map to place it' : 'Add placemark'}
+          className={`${buttonClass} ${addMode ? 'bg-crimson text-on-crimson' : ''}`}
         >
           <HugeiconsIcon icon={MapPinPlusIcon} size={16} strokeWidth={1.5} />
         </button>
@@ -37,7 +37,7 @@ export default function AddPlacemarkToolbar({
           title="Use my location"
           className={buttonClass}
         >
-          <HugeiconsIcon icon={GpsSignal01Icon} size={16} strokeWidth={1.5} />
+          <HugeiconsIcon icon={Gps01Icon} size={16} strokeWidth={1.5} />
         </button>
       </div>
       {locationError && (

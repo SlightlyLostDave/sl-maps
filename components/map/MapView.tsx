@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+
 import { createClient } from '@/lib/supabase/client';
 import {
   buildCategoryStyles,
@@ -15,11 +16,6 @@ import {
   registerFallbackPin,
   registerCategoryIcons,
 } from '@/lib/map/markerIcons';
-import MapLoadingOverlay from './MapLoadingOverlay';
-import AddPlacemarkToolbar from './AddPlacemarkToolbar';
-import BasemapSwitcher from './BasemapSwitcher';
-import { useFilterTransition } from './FilterTransitionContext';
-import { useMapControls } from './MapControlsContext';
 import {
   BASEMAPS,
   loadStoredBasemapId,
@@ -27,6 +23,11 @@ import {
   saveBasemapId,
   type BasemapId,
 } from '@/lib/map/basemaps';
+import MapLoadingOverlay from './MapLoadingOverlay';
+import AddPlacemarkToolbar from './AddPlacemarkToolbar';
+import BasemapSwitcher from './BasemapSwitcher';
+import { useFilterTransition } from './FilterTransitionContext';
+import { useMapControls } from './MapControlsContext';
 
 const SOURCE_ID = 'placemarks';
 const CLUSTER_HALO_LAYER = 'placemarks-cluster-halo';
@@ -258,8 +259,6 @@ export default function MapView() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setAddMode(false);
-        openCreatePanel(latitude, longitude);
         mapRef.current?.easeTo({
           center: [longitude, latitude],
           zoom: Math.max(mapRef.current.getZoom(), 13),
