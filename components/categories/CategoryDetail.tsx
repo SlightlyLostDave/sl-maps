@@ -127,7 +127,7 @@ export default async function CategoryDetail({
 
         <ErrorBanner error={error} />
 
-        <form action={createCategory} className="flex max-w-lg flex-col gap-4">
+        <form key="new" action={createCategory} className="flex max-w-lg flex-col gap-4">
           <CategoryFields parentOptions={parentOptions} />
           <div>
             <SubmitButton>Create category</SubmitButton>
@@ -167,7 +167,7 @@ export default async function CategoryDetail({
 
       <ErrorBanner error={error} />
 
-      <form action={updateWithId} className="flex max-w-lg flex-col gap-4">
+      <form key={category.id} action={updateWithId} className="flex max-w-lg flex-col gap-4">
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium text-ink-dim">Slug</span>
           <input
