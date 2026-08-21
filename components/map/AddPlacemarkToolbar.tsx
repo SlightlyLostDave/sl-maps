@@ -20,7 +20,7 @@ export default function AddPlacemarkToolbar({
   isLocating?: boolean;
 }) {
   return (
-    <div className="absolute right-3 top-23 z-10 flex flex-col items-end gap-2">
+    <div className="absolute right-3 top-23 mt-2 z-10 flex flex-col items-end gap-2">
       <div className="flex flex-col gap-1.5 rounded-md border border-line-strong bg-bg-raised p-1 shadow-(--shadow)">
         <button
           type="button"

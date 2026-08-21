@@ -1,9 +1,9 @@
-"use server";
+'use server';
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { slugify } from "@/lib/slug";
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { slugify } from '@/lib/slug';
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -14,19 +14,19 @@ async function nextUnsortedId(afterId: string) {
   // reads top-to-bottom; fall back to the first unsorted placemark once the
   // list wraps around.
   const { data: current } = await supabase
-    .from("placemarks")
-    .select("created_at")
-    .eq("id", afterId)
+    .from('placemarks')
+    .select('created_at')
+    .eq('id', afterId)
     .single();
 
   if (current) {
     const { data: after } = await supabase
-      .from("placemarks")
-      .select("id")
-      .eq("needs_review", true)
-      .is("deleted_at", null)
-      .gt("created_at", current.created_at)
-      .order("created_at", { ascending: true })
+      .from('placemarks')
+      .select('id')
+      .eq('needs_review', true)
+      .is('deleted_at', null)
+      .gt('created_at', current.created_at)
+      .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle();
 
@@ -34,11 +34,11 @@ async function nextUnsortedId(afterId: string) {
   }
 
   const { data: first } = await supabase
-    .from("placemarks")
-    .select("id")
-    .eq("needs_review", true)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: true })
+    .from('placemarks')
+    .select('id')
+    .eq('needs_review', true)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle();
 
@@ -46,43 +46,48 @@ async function nextUnsortedId(afterId: string) {
 }
 
 export async function updatePlacemark(id: string, formData: FormData) {
-  const categoryId = formData.get("category_id");
-  const description = formData.get("description");
+  const categoryId = formData.get('category_id');
+  const description = formData.get('description');
 
   const supabase = await createClient();
   const { error } = await supabase
-    .from("placemarks")
+    .from('placemarks')
     .update({
       category_id: categoryId ? String(categoryId) : null,
       description: description ? String(description) : null,
       needs_review: false,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", id);
+    .eq('id', id);
 
   if (error) throw error;
 
-  revalidatePath("/review");
+  revalidatePath('/review');
   const next = await nextUnsortedId(id);
-  redirect(next ? `/review?id=${next}` : "/review");
+  redirect(next ? `/review?id=${next}` : '/review');
 }
 
 export async function skipPlacemark(id: string) {
   const next = await nextUnsortedId(id);
-  redirect(next ? `/review?id=${next}` : "/review");
+  redirect(next ? `/review?id=${next}` : '/review');
 }
 
 function readPlacemarkFields(formData: FormData) {
-  const priorityRaw = formData.get("priority");
+  const priorityRaw = formData.get('priority');
   return {
-    name: String(formData.get("name") ?? "").trim(),
-    categoryId: formData.get("category_id") ? String(formData.get("category_id")) : null,
-    description: formData.get("description") ? String(formData.get("description")) : null,
+    name: String(formData.get('name') ?? '').trim(),
+    categoryId: formData.get('category_id')
+      ? String(formData.get('category_id'))
+      : null,
+    description: formData.get('description')
+      ? String(formData.get('description'))
+      : null,
     priority: priorityRaw ? Number(priorityRaw) : null,
-    wantToGo: formData.get("want_to_go") === "on" || formData.get("want_to_go") === "true",
-    externalUrl: formData.get("external_url") ? String(formData.get("external_url")) : null,
-    tagIds: formData.getAll("tag_id").map(String),
-    tagNames: formData.getAll("tag_name").map(String).filter(Boolean),
+    externalUrl: formData.get('external_url')
+      ? String(formData.get('external_url'))
+      : null,
+    tagIds: formData.getAll('tag_id').map(String),
+    tagNames: formData.getAll('tag_name').map(String).filter(Boolean),
   };
 }
 
@@ -101,11 +106,11 @@ async function findOrCreateTags(
     const slug = slugify(name);
 
     const { data: existing } = await supabase
-      .from("tags")
-      .select("id")
-      .eq("owner_id", ownerId)
-      .eq("slug", slug)
-      .is("deleted_at", null)
+      .from('tags')
+      .select('id')
+      .eq('owner_id', ownerId)
+      .eq('slug', slug)
+      .is('deleted_at', null)
       .maybeSingle();
     if (existing) {
       ids.push(existing.id as string);
@@ -113,9 +118,9 @@ async function findOrCreateTags(
     }
 
     const { data: created, error } = await supabase
-      .from("tags")
+      .from('tags')
       .insert({ id: crypto.randomUUID(), owner_id: ownerId, name, slug })
-      .select("id")
+      .select('id')
       .single();
     if (error) throw error;
     ids.push(created.id as string);
@@ -132,17 +137,19 @@ async function replacePlacemarkTags(
   tagIds: string[],
 ) {
   const { error: deleteError } = await supabase
-    .from("placemark_tags")
+    .from('placemark_tags')
     .delete()
-    .eq("placemark_id", placemarkId);
+    .eq('placemark_id', placemarkId);
   if (deleteError) throw deleteError;
 
   const uniqueIds = [...new Set(tagIds)];
   if (uniqueIds.length === 0) return;
 
   const { error: insertError } = await supabase
-    .from("placemark_tags")
-    .insert(uniqueIds.map((tagId) => ({ placemark_id: placemarkId, tag_id: tagId })));
+    .from('placemark_tags')
+    .insert(
+      uniqueIds.map((tagId) => ({ placemark_id: placemarkId, tag_id: tagId })),
+    );
   if (insertError) throw insertError;
 }
 
@@ -155,21 +162,29 @@ export async function createPlacemark(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "not_authenticated" };
+  if (!user) return { error: 'not_authenticated' };
 
-  const { name, categoryId, description, priority, wantToGo, externalUrl, tagIds, tagNames } =
-    readPlacemarkFields(formData);
-  if (!name) return { error: "Name is required." };
-  if (!categoryId) return { error: "Choose a category." };
+  const {
+    name,
+    categoryId,
+    description,
+    priority,
+    externalUrl,
+    tagIds,
+    tagNames,
+  } = readPlacemarkFields(formData);
 
-  const lat = Number(formData.get("lat"));
-  const lon = Number(formData.get("lon"));
+  if (!name) return { error: 'Name is required.' };
+  if (!categoryId) return { error: 'Choose a category.' };
+
+  const lat = Number(formData.get('lat'));
+  const lon = Number(formData.get('lon'));
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    return { error: "A location is required." };
+    return { error: 'A location is required.' };
   }
 
   const { data, error } = await supabase
-    .from("placemarks")
+    .from('placemarks')
     .insert({
       owner_id: user.id,
       name,
@@ -180,24 +195,26 @@ export async function createPlacemark(
       // column derived from this and must never be set directly.
       geom: `SRID=4326;POINT(${lon} ${lat})`,
       priority,
-      want_to_go: wantToGo,
       external_url: externalUrl,
-      source: "manual",
+      source: 'manual',
     })
-    .select("id")
+    .select('id')
     .single();
   if (error) return { error: error.message };
 
-  const createdTagIds = tagNames.length ? await findOrCreateTags(supabase, user.id, tagNames) : [];
+  const createdTagIds = tagNames.length
+    ? await findOrCreateTags(supabase, user.id, tagNames)
+    : [];
   const allTagIds = [...tagIds, ...createdTagIds];
-  if (allTagIds.length > 0) await replacePlacemarkTags(supabase, data.id as string, allTagIds);
+  if (allTagIds.length > 0)
+    await replacePlacemarkTags(supabase, data.id as string, allTagIds);
 
-  revalidatePath("/review");
+  revalidatePath('/review');
   return { id: data.id as string };
 }
 
 // General-purpose placemark edit (name, category, description, priority,
-// want-to-go, external URL, tags), used by the map's edit panel and its
+// external URL, tags), used by the map's edit panel and its
 // autosave-on-blur. Distinct from `updatePlacemark` above, which is the
 // narrower /review-queue action (category + description only) that still
 // relies on redirect()-based navigation to the next unsorted placemark —
@@ -210,47 +227,57 @@ export async function savePlacemark(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "not_authenticated" };
+  if (!user) return { error: 'not_authenticated' };
 
-  const { name, categoryId, description, priority, wantToGo, externalUrl, tagIds, tagNames } =
-    readPlacemarkFields(formData);
-  if (!name) return { error: "Name is required." };
-  if (!categoryId) return { error: "Choose a category." };
+  const {
+    name,
+    categoryId,
+    description,
+    priority,
+    externalUrl,
+    tagIds,
+    tagNames,
+  } = readPlacemarkFields(formData);
+  if (!name) return { error: 'Name is required.' };
+  if (!categoryId) return { error: 'Choose a category.' };
 
   const { error } = await supabase
-    .from("placemarks")
+    .from('placemarks')
     .update({
       name,
       category_id: categoryId,
       description,
       priority,
-      want_to_go: wantToGo,
       external_url: externalUrl,
       needs_review: false,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", id);
+    .eq('id', id);
   if (error) return { error: error.message };
 
-  const createdTagIds = tagNames.length ? await findOrCreateTags(supabase, user.id, tagNames) : [];
+  const createdTagIds = tagNames.length
+    ? await findOrCreateTags(supabase, user.id, tagNames)
+    : [];
   await replacePlacemarkTags(supabase, id, [...tagIds, ...createdTagIds]);
 
-  revalidatePath("/review");
+  revalidatePath('/review');
   return { ok: true };
 }
 
 // Soft delete only — mirrors deleteCategory's convention. No dependent
 // reassignment is needed: nothing else must be repointed before a placemark
 // can be removed.
-export async function deletePlacemark(id: string): Promise<{ ok: true } | { error: string }> {
+export async function deletePlacemark(
+  id: string,
+): Promise<{ ok: true } | { error: string }> {
   const supabase = await createClient();
   const { error } = await supabase
-    .from("placemarks")
+    .from('placemarks')
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq('id', id);
   if (error) return { error: error.message };
 
-  revalidatePath("/review");
+  revalidatePath('/review');
   return { ok: true };
 }
 
@@ -266,11 +293,13 @@ export async function logVisit(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "not_authenticated" };
+  if (!user) return { error: 'not_authenticated' };
 
-  const { error } = await supabase
-    .from("visits")
-    .insert({ placemark_id: placemarkId, owner_id: user.id, visited_on: visitedOn });
+  const { error } = await supabase.from('visits').insert({
+    placemark_id: placemarkId,
+    owner_id: user.id,
+    visited_on: visitedOn,
+  });
   if (error) return { error: error.message };
 
   return { ok: true };

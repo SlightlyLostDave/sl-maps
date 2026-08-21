@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import Skeleton from "@/components/ui/Skeleton";
-import PlacemarkForm, { type PlacemarkFormValues } from "./PlacemarkForm";
-import type { SelectedTag } from "./TagInput";
+import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import Skeleton from '@/components/ui/Skeleton';
+import PlacemarkForm, { type PlacemarkFormValues } from './PlacemarkForm';
+import type { SelectedTag } from './TagInput';
 
 type PlacemarkDetails = {
   id: string;
@@ -15,42 +15,49 @@ type PlacemarkDetails = {
   lon: number;
   geom_kind: string;
   priority: number | null;
-  want_to_go: boolean;
   visited: boolean;
   visit_count: number;
   first_visited_on: string | null;
   last_visited_on: string | null;
   source: string;
   external_url: string | null;
-  category: { id: string; slug: string; name: string; color: string; icon: string | null };
+  category: {
+    id: string;
+    slug: string;
+    name: string;
+    color: string;
+    icon: string | null;
+  };
   tags: { id: string; slug: string; name: string }[];
 };
 
 function detailsToFormValues(details: PlacemarkDetails): PlacemarkFormValues {
   return {
     name: details.name,
-    categoryId: details.category?.id ?? "",
-    description: details.description ?? "",
+    categoryId: details.category?.id ?? '',
+    description: details.description ?? '',
     priority: details.priority,
-    wantToGo: details.want_to_go,
-    externalUrl: details.external_url ?? "",
+    externalUrl: details.external_url ?? '',
     tags: details.tags.map((t): SelectedTag => ({ id: t.id, name: t.name })),
   };
 }
 
 export default function DetailDrawer() {
   const searchParams = useSearchParams();
-  const id = searchParams.get("id");
-  const editing = searchParams.get("edit") === "1";
-  const isCreate = id === "new";
-  const latParam = searchParams.get("lat");
-  const lonParam = searchParams.get("lon");
+  const id = searchParams.get('id');
+  const editing = searchParams.get('edit') === '1';
+  const isCreate = id === 'new';
+  const latParam = searchParams.get('lat');
+  const lonParam = searchParams.get('lon');
 
   // Keyed by the id it was fetched for, so `loading`/`details` can be
   // derived during render instead of needing a synchronous setState at the
   // top of the fetch effect. refreshToken forces a refetch after a save
   // without changing `id` (e.g. closing the edit form back to view mode).
-  const [result, setResult] = useState<{ id: string; data: PlacemarkDetails | null } | null>(null);
+  const [result, setResult] = useState<{
+    id: string;
+    data: PlacemarkDetails | null;
+  } | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const details = result?.id === id ? result.data : null;
   const loading = id != null && !isCreate && result?.id !== id;
@@ -60,9 +67,9 @@ export default function DetailDrawer() {
     let cancelled = false;
     const supabase = createClient();
     supabase
-      .from("placemark_details")
-      .select("*")
-      .eq("id", id)
+      .from('placemark_details')
+      .select('*')
+      .eq('id', id)
       .single()
       .then(({ data, error }) => {
         if (cancelled) return;
@@ -75,46 +82,46 @@ export default function DetailDrawer() {
 
   function close() {
     const params = new URLSearchParams(searchParams.toString());
-    params.delete("id");
-    params.delete("edit");
-    params.delete("lat");
-    params.delete("lon");
+    params.delete('id');
+    params.delete('edit');
+    params.delete('lat');
+    params.delete('lon');
     const query = params.toString();
     // See the shallow-routing note in MapView's point-click handler: this
     // is pure client state, so update the URL directly rather than via
     // router.push().
-    window.history.pushState(null, "", query ? `?${query}` : "?");
+    window.history.pushState(null, '', query ? `?${query}` : '?');
   }
 
   function openEdit() {
     if (!id) return;
     const params = new URLSearchParams(searchParams.toString());
-    params.set("edit", "1");
-    window.history.pushState(null, "", `?${params.toString()}`);
+    params.set('edit', '1');
+    window.history.pushState(null, '', `?${params.toString()}`);
   }
 
   function closeEdit() {
     const params = new URLSearchParams(searchParams.toString());
-    params.delete("edit");
-    window.history.pushState(null, "", `?${params.toString()}`);
+    params.delete('edit');
+    window.history.pushState(null, '', `?${params.toString()}`);
   }
 
   function openView(placemarkId: string) {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("id", placemarkId);
-    params.delete("edit");
-    params.delete("lat");
-    params.delete("lon");
-    window.history.pushState(null, "", `?${params.toString()}`);
+    params.set('id', placemarkId);
+    params.delete('edit');
+    params.delete('lat');
+    params.delete('lon');
+    window.history.pushState(null, '', `?${params.toString()}`);
   }
 
   useEffect(() => {
     if (!id) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
+      if (event.key === 'Escape') close();
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -122,7 +129,11 @@ export default function DetailDrawer() {
 
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center md:static md:z-auto md:h-full md:w-1/2 md:shrink-0 md:items-stretch md:justify-end">
-      <div className="absolute inset-0 md:hidden" onClick={close} aria-hidden="true" />
+      <div
+        className="absolute inset-0 md:hidden"
+        onClick={close}
+        aria-hidden="true"
+      />
       <div className="relative z-10 max-h-[75vh] w-full overflow-y-auto rounded-t-xl border border-line-strong bg-bg-raised shadow-(--shadow) md:max-h-full md:h-full md:w-full md:rounded-none md:border-y-0 md:border-r-0 md:border-l">
         <button
           type="button"
@@ -209,14 +220,21 @@ export default function DetailDrawer() {
                 />
                 {details.category.name}
               </div>
-              <div className="font-display text-2xl text-ink">{details.name}</div>
+              <div className="font-display text-2xl text-ink">
+                {details.name}
+              </div>
 
               <div className="my-2.5 flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3.5 font-mono text-[9px] text-ink-faint">
                 <span>
                   <span>
-                    <b className="font-medium text-ink-dim">{details.lat.toFixed(4)}</b>,{" "}
-                    <b className="font-medium text-ink-dim">{details.lon.toFixed(4)}</b>
-                  </span>{" "}
+                    <b className="font-medium text-ink-dim">
+                      {details.lat.toFixed(4)}
+                    </b>
+                    ,{' '}
+                    <b className="font-medium text-ink-dim">
+                      {details.lon.toFixed(4)}
+                    </b>
+                  </span>{' '}
                   <span>{details.geom_kind}</span>
                 </span>
                 <button
@@ -229,7 +247,9 @@ export default function DetailDrawer() {
               </div>
 
               {details.description && (
-                <p className="mb-3 text-sm leading-relaxed text-ink-dim">{details.description}</p>
+                <p className="mb-3 text-sm leading-relaxed text-ink-dim">
+                  {details.description}
+                </p>
               )}
 
               <div className="grid grid-cols-[84px_1fr] items-center gap-x-3.5 gap-y-2 text-sm">
@@ -238,9 +258,8 @@ export default function DetailDrawer() {
                 </div>
                 <div className="text-ink-dim">
                   {details.visited
-                    ? `Visited${details.last_visited_on ? ` · ${details.last_visited_on}` : ""}`
-                    : "Not visited"}
-                  {details.want_to_go && !details.visited ? " · Want to go" : ""}
+                    ? `Visited${details.last_visited_on ? ` · ${details.last_visited_on}` : ''}`
+                    : 'Not visited'}
                 </div>
 
                 {details.priority != null && (

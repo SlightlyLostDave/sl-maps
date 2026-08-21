@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import CategoryFilter from "./CategoryFilter";
-import StatusFilter from "./StatusFilter";
-import SearchField from "./SearchField";
-import { useFilterParams } from "./useFilterParams";
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import CategoryFilter from './CategoryFilter';
+import StatusFilter from './StatusFilter';
+import SearchField from './SearchField';
+import { useFilterParams } from './useFilterParams';
 
 export type CategoryItem = {
   id: string;
@@ -16,7 +16,7 @@ export type CategoryItem = {
   count: number;
 };
 
-function useMatchCount(activeCatIds: Set<string>, visitedStatus: string, wantToGoOn: boolean) {
+function useMatchCount(activeCatIds: Set<string>, visitedStatus: string) {
   const [matchingCount, setMatchingCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -24,13 +24,14 @@ function useMatchCount(activeCatIds: Set<string>, visitedStatus: string, wantToG
     const timer = setTimeout(async () => {
       const supabase = createClient();
       let query = supabase
-        .from("placemarks")
-        .select("id", { count: "exact", head: true })
-        .is("deleted_at", null);
+        .from('placemarks')
+        .select('id', { count: 'exact', head: true })
+        .is('deleted_at', null);
 
-      if (activeCatIds.size > 0) query = query.in("category_id", [...activeCatIds]);
-      if (visitedStatus !== "all") query = query.eq("visited", visitedStatus === "visited");
-      if (wantToGoOn) query = query.eq("want_to_go", true);
+      if (activeCatIds.size > 0)
+        query = query.in('category_id', [...activeCatIds]);
+      if (visitedStatus !== 'all')
+        query = query.eq('visited', visitedStatus === 'visited');
 
       const { count, error } = await query;
       if (!cancelled && !error) setMatchingCount(count ?? 0);
@@ -40,7 +41,7 @@ function useMatchCount(activeCatIds: Set<string>, visitedStatus: string, wantToG
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [activeCatIds, visitedStatus, wantToGoOn]);
+  }, [activeCatIds, visitedStatus]);
 
   return matchingCount;
 }
@@ -50,16 +51,15 @@ export default function FilterPanel({
   totalCount,
   visitedCount,
   notVisitedCount,
-  wantToGoCount,
 }: {
   categories: CategoryItem[];
   totalCount: number;
   visitedCount: number;
   notVisitedCount: number;
-  wantToGoCount: number;
 }) {
-  const { activeCatIds, visitedStatus, wantToGoOn, activeFilterCount, clearAll } = useFilterParams();
-  const matchingCount = useMatchCount(activeCatIds, visitedStatus, wantToGoOn);
+  const { activeCatIds, visitedStatus, activeFilterCount, clearAll } =
+    useFilterParams();
+  const matchingCount = useMatchCount(activeCatIds, visitedStatus);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
@@ -77,7 +77,8 @@ export default function FilterPanel({
       </div>
 
       <p className="shrink-0 font-mono text-xs text-ink-faint">
-        <span className="text-ink">{matchingCount ?? "…"}</span> of {totalCount} placemarks
+        <span className="text-ink">{matchingCount ?? '…'}</span> of {totalCount}{' '}
+        placemarks
       </p>
 
       <div className="shrink-0">
@@ -92,7 +93,6 @@ export default function FilterPanel({
         <StatusFilter
           visitedCount={visitedCount}
           notVisitedCount={notVisitedCount}
-          wantToGoCount={wantToGoCount}
         />
       </div>
     </div>

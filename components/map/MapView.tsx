@@ -44,7 +44,6 @@ type PlacemarkFeature = GeoJSON.Feature<
     category_id: string;
     priority: number | null;
     visited: boolean;
-    want_to_go: boolean;
     tags: string;
     icon_image?: string;
   }
@@ -57,7 +56,6 @@ type PlacemarkCollection = GeoJSON.FeatureCollection<
 type Filters = {
   categoryIds: string[] | null;
   visited: boolean | null;
-  wantToGo: boolean;
 };
 
 const DEFAULT_CENTER: [number, number] = [-80.5, 44.5];
@@ -108,8 +106,8 @@ function parseFilters(params: URLSearchParams): Filters {
   const visitedParam = params.get('visited');
   const visited =
     visitedParam === '1' ? true : visitedParam === '0' ? false : null;
-  const wantToGo = params.get('want_to_go') === '1';
-  return { categoryIds, visited, wantToGo };
+
+  return { categoryIds, visited };
 }
 
 // The QGIS import backlog (sql/0001_placemarks_needs_review.sql) left some
@@ -223,7 +221,6 @@ export default function MapView() {
   const filtersRef = useRef<Filters>({
     categoryIds: null,
     visited: null,
-    wantToGo: false,
   });
   const refreshRef = useRef<() => void>(() => {});
   const moveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -421,12 +418,11 @@ export default function MapView() {
         }
 
         const collection = data as PlacemarkCollection;
-        const { visited, wantToGo } = filtersRef.current;
+        const { visited } = filtersRef.current;
         const features = collection.features
           .filter((feature) => {
             if (visited !== null && feature.properties.visited !== visited)
               return false;
-            if (wantToGo && !feature.properties.want_to_go) return false;
             return true;
           })
           .map((feature) => {
