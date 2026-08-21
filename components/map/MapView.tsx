@@ -218,6 +218,7 @@ class ZoomControl implements mapboxgl.IControl {
 export default function MapView() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const categoryStylesRef = useRef<Map<string, CategoryIconStyle>>(new Map());
   const filtersRef = useRef<Filters>({
     categoryIds: null,
@@ -328,368 +329,393 @@ export default function MapView() {
       new URLSearchParams(window.location.search),
     );
 
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      // Read once on mount only — later switches go through setStyle(),
-      // not a re-run of this effect (see the eslint-disable-next-line note
-      // on this effect's dependency array below).
-      style: BASEMAPS[basemapId].url,
-      center: initialView?.center ?? DEFAULT_CENTER,
-      zoom: initialView?.zoom ?? DEFAULT_ZOOM,
-      attributionControl: false,
-    });
-    mapRef.current = map;
-    map.addControl(new ZoomControl(), 'top-right');
-    // Freed up bottom-right (Mapbox's default attribution anchor) for
-    // BasemapSwitcher by moving attribution to bottom-left instead.
-    map.addControl(
-      new mapboxgl.AttributionControl({ compact: true }),
-      'bottom-left',
-    );
+    // Map construction is deferred until we know the initial center (see
+    // below) — either the URL-specified view or, when none is present, the
+    // outcome of a geolocation lookup — so the map never has to flash at the
+    // fixed regional default and then jump to the user's actual location.
+    function initMap(center: [number, number], zoom: number) {
+      if (cancelled || !containerRef.current) return;
 
-    mapControls.register({
-      refresh: () => refreshRef.current(),
-      flyTo: (lngLat, options) =>
-        map.easeTo({
-          center: lngLat,
-          zoom:
-            options?.zoom != null
-              ? Math.max(map.getZoom(), options.zoom)
-              : map.getZoom(),
-          duration: 600,
-        }),
-    });
+      const map = new mapboxgl.Map({
+        container: containerRef.current,
+        // Read once on mount only — later switches go through setStyle(),
+        // not a re-run of this effect (see the eslint-disable-next-line note
+        // on this effect's dependency array below).
+        style: BASEMAPS[basemapId].url,
+        center,
+        zoom,
+        attributionControl: false,
+      });
+      mapRef.current = map;
+      map.addControl(new ZoomControl(), 'top-right');
+      // Freed up bottom-right (Mapbox's default attribution anchor) for
+      // BasemapSwitcher by moving attribution to bottom-left instead.
+      map.addControl(
+        new mapboxgl.AttributionControl({ compact: true }),
+        'bottom-left',
+      );
 
-    // No pre-defined location in the URL — try to center on the user's
-    // actual location instead of sitting at the fixed regional default.
-    // Failure/denial is silent (no toast, no locationError) since this is
-    // automatic rather than a response to a click.
-    if (!initialView && navigator.geolocation) {
+      mapControls.register({
+        refresh: () => refreshRef.current(),
+        flyTo: (lngLat, options) =>
+          map.easeTo({
+            center: lngLat,
+            zoom:
+              options?.zoom != null
+                ? Math.max(map.getZoom(), options.zoom)
+                : map.getZoom(),
+            duration: 600,
+          }),
+      });
+
+      // mapbox-gl only calls resize() on window resize (trackResize), not on
+      // container resize — the DetailDrawer opening/closing changes the map
+      // container's width via flex layout without firing a window resize
+      // event, so the canvas would otherwise keep rendering at its stale size.
+      const resizeObserver = new ResizeObserver(() => {
+        map.resize();
+        if (pendingCenterRef.current) {
+          map.easeTo({ center: pendingCenterRef.current, duration: 300 });
+          pendingCenterRef.current = null;
+        }
+      });
+      resizeObserver.observe(containerRef.current);
+      resizeObserverRef.current = resizeObserver;
+
+      const supabase = createClient();
+
+      async function refresh() {
+        // isStyleLoaded() is intentionally not part of this guard: refresh()
+        // is called synchronously right after addSource() in the "load"
+        // handler below, and the freshly-added source hasn't finished
+        // loading yet at that point, so isStyleLoaded() would still read
+        // false and silently skip the very first fetch (placemarks would
+        // then only appear after a pan triggers moveend).
+        if (!map.getSource(SOURCE_ID)) return;
+        const bounds = map.getBounds();
+        if (!bounds) return;
+        const { categoryIds } = filtersRef.current;
+
+        const requestId = ++requestIdRef.current;
+        inFlightRef.current += 1;
+        setIsFetching(true);
+
+        const { data, error } = await supabase.rpc('placemarks_geojson', {
+          in_west: bounds.getWest(),
+          in_south: bounds.getSouth(),
+          in_east: bounds.getEast(),
+          in_north: bounds.getNorth(),
+          in_category_ids: categoryIds,
+        });
+
+        inFlightRef.current -= 1;
+        if (inFlightRef.current === 0) setIsFetching(false);
+
+        // A newer request superseded this one — don't let a slow, stale
+        // response overwrite fresher data already on the map.
+        if (requestId !== requestIdRef.current) return;
+
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        const collection = data as PlacemarkCollection;
+        const { visited, wantToGo } = filtersRef.current;
+        const features = collection.features
+          .filter((feature) => {
+            if (visited !== null && feature.properties.visited !== visited)
+              return false;
+            if (wantToGo && !feature.properties.want_to_go) return false;
+            return true;
+          })
+          .map((feature) => {
+            const pinName = pinIconName(feature.properties.category_id);
+            // The category's `icon` name might not resolve to a real
+            // HugeIcons asset (fetch/rasterize can fail — e.g. stale/invalid
+            // data), or the category's pin may not have registered yet; fall
+            // back to the generic pin rather than pointing icon-image at a
+            // name mapbox has never seen.
+            const icon_image = map.hasImage(pinName)
+              ? pinName
+              : FALLBACK_PIN_NAME;
+            return {
+              ...feature,
+              geometry: toPointGeometry(feature.geometry),
+              // Supercluster (used internally by the clustered GeoJSON
+              // source) does not preserve each leaf feature's top-level `id`
+              // once features are clustered, so the click handler can't rely
+              // on feature.id — mirror it into properties, which clustering
+              // does preserve. icon_image is similarly precomputed here
+              // (rather than as a mapbox style expression) since a category's
+              // pin image may not be registered yet when this runs.
+              properties: {
+                ...feature.properties,
+                id: feature.id as string,
+                icon_image,
+              },
+            };
+          });
+
+        const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
+        source.setData({ type: 'FeatureCollection', features });
+      }
+      refreshRef.current = refresh;
+
+      // setStyle() (used by the basemap switcher) wipes every source/layer/
+      // image not defined in the style itself and fires 'style.load' — unlike
+      // 'load', which only ever fires once per Map instance. Everything that
+      // setStyle destroys has to be re-added here so it reruns on every style
+      // load, including the first.
+      map.on('style.load', async () => {
+        quietenBasemap(map);
+        registerFallbackPin(map);
+
+        map.addSource(SOURCE_ID, {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] },
+          cluster: true,
+          clusterMaxZoom: 13,
+          clusterRadius: 25,
+        });
+
+        map.addLayer({
+          id: CLUSTER_HALO_LAYER,
+          type: 'circle',
+          source: SOURCE_ID,
+          filter: [
+            'all',
+            ['has', 'point_count'],
+            ['>=', ['get', 'point_count'], LARGE_CLUSTER_THRESHOLD],
+          ],
+          paint: {
+            'circle-radius': 36,
+            'circle-color': cssVar('--crimson', '#d5202b'),
+            'circle-opacity': 0.15,
+          },
+        });
+
+        map.addLayer({
+          id: CLUSTER_CIRCLE_LAYER,
+          type: 'circle',
+          source: SOURCE_ID,
+          filter: ['has', 'point_count'],
+          paint: {
+            'circle-color': cssVar('--crimson', '#d5202b'),
+            'circle-radius': [
+              'step',
+              ['get', 'point_count'],
+              17,
+              25,
+              22,
+              LARGE_CLUSTER_THRESHOLD,
+              29,
+            ],
+            'circle-stroke-width': 2,
+            'circle-stroke-color': cssVar('--pin-stroke', '#0c0b09'),
+          },
+        });
+
+        map.addLayer({
+          id: CLUSTER_COUNT_LAYER,
+          type: 'symbol',
+          source: SOURCE_ID,
+          filter: ['has', 'point_count'],
+          layout: {
+            'text-field': ['get', 'point_count_abbreviated'],
+            'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
+            'text-size': 11,
+          },
+          paint: {
+            'text-color': cssVar('--on-crimson', '#fff8ea'),
+          },
+        });
+
+        map.addLayer({
+          id: POINT_LAYER,
+          type: 'symbol',
+          source: SOURCE_ID,
+          filter: ['!', ['has', 'point_count']],
+          layout: {
+            // Precomputed per-feature in refresh() below, since a category's
+            // pin image may not have finished registering when this runs.
+            'icon-image': [
+              'coalesce',
+              ['get', 'icon_image'],
+              FALLBACK_PIN_NAME,
+            ],
+            'icon-size': 1,
+            'icon-anchor': 'bottom',
+            'icon-allow-overlap': true,
+          },
+        });
+
+        await registerCategoryIcons(map, categoryStylesRef.current);
+        // setStyle() also clears the source's data along with the source
+        // itself, so placemarks need re-fetching on every style load, not
+        // just the first.
+        refresh();
+      });
+
+      map.on('load', () => {
+        setMapLoaded(true);
+
+        // Delegated listeners below are keyed by layer-id string on the
+        // Map/Style instance, not bound to the layer object — they survive
+        // setStyle() and re-apply automatically once a layer with the same id
+        // is re-added by the 'style.load' handler above. 'load' only ever
+        // fires once per Map instance, so registering them here (rather than
+        // in 'style.load') is what keeps them from stacking duplicates on
+        // every basemap switch.
+
+        // In add-mode, hovering an existing pin/cluster doesn't lead anywhere
+        // (the click handler below bails on hits), so the cursor should stay
+        // crosshair instead of flipping to pointer and back.
+        map.on(
+          'mouseenter',
+          CLUSTER_CIRCLE_LAYER,
+          () =>
+            (map.getCanvas().style.cursor = addModeRef.current
+              ? 'crosshair'
+              : 'pointer'),
+        );
+        map.on(
+          'mouseleave',
+          CLUSTER_CIRCLE_LAYER,
+          () =>
+            (map.getCanvas().style.cursor = addModeRef.current
+              ? 'crosshair'
+              : ''),
+        );
+        map.on(
+          'mouseenter',
+          POINT_LAYER,
+          () =>
+            (map.getCanvas().style.cursor = addModeRef.current
+              ? 'crosshair'
+              : 'pointer'),
+        );
+        map.on(
+          'mouseleave',
+          POINT_LAYER,
+          () =>
+            (map.getCanvas().style.cursor = addModeRef.current
+              ? 'crosshair'
+              : ''),
+        );
+
+        map.on('click', CLUSTER_CIRCLE_LAYER, (event) => {
+          const [feature] = map.queryRenderedFeatures(event.point, {
+            layers: [CLUSTER_CIRCLE_LAYER],
+          });
+          const clusterId = feature?.properties?.cluster_id;
+
+          if (
+            clusterId == null ||
+            !feature ||
+            feature.geometry.type !== 'Point'
+          )
+            return;
+
+          const center = feature.geometry.coordinates as [number, number];
+          const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
+
+          source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+            if (err || zoom == null) return;
+            map.easeTo({ center, zoom });
+          });
+        });
+
+        map.on('click', POINT_LAYER, (event) => {
+          const [feature] = map.queryRenderedFeatures(event.point, {
+            layers: [POINT_LAYER],
+          });
+          const id = feature?.properties?.id ?? feature?.id;
+          if (id == null) return;
+          // Opening the drawer shrinks the map container (see the
+          // ResizeObserver above), which re-centers the viewport around its
+          // old center in the new, narrower canvas — re-queue the clicked
+          // placemark's coordinates so it ends up centered in that view
+          // instead of drifting toward the edge.
+          if (feature?.geometry.type === 'Point') {
+            pendingCenterRef.current = feature.geometry.coordinates as [
+              number,
+              number,
+            ];
+          }
+          const params = new URLSearchParams(window.location.search);
+          params.set('id', String(id));
+          // Plain router.push() here round-trips through the server (this
+          // route reads cookies, so it's fully dynamic) and, per
+          // node_modules/next/dist/docs/01-app/02-guides/single-page-applications.md
+          // ("Shallow routing on the client"), that RSC round-trip can resolve
+          // without ever committing the URL/search-param change for
+          // same-page navigations. Opening/closing the detail pane is pure
+          // client state, so use the documented shallow-routing escape hatch
+          // (history.pushState, which Next's router patches to stay in sync
+          // with useSearchParams) instead of router.push().
+          window.history.pushState(null, '', `?${params.toString()}`);
+        });
+
+        // Generic background click for add-mode — registered separately from
+        // the layer-scoped handlers above since it must fire on empty map
+        // area, not a specific layer. Bails if the click actually hit an
+        // existing point or cluster so clicking a pin still opens its detail
+        // instead of creating a duplicate underneath it.
+        map.on('click', (event) => {
+          if (!addModeRef.current) return;
+          const hits = map.queryRenderedFeatures(event.point, {
+            layers: [POINT_LAYER, CLUSTER_CIRCLE_LAYER],
+          });
+          if (hits.length > 0) return;
+          addModeRef.current = false;
+          setAddMode(false);
+          map.getCanvas().style.cursor = '';
+          openCreatePanel(event.lngLat.lat, event.lngLat.lng);
+        });
+      });
+
+      map.on('moveend', () => {
+        updateViewParams(map);
+        if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
+        moveTimeoutRef.current = setTimeout(() => refreshRef.current(), 300);
+      });
+    }
+
+    // A URL-specified view wins immediately. Otherwise, wait to learn
+    // whether geolocation succeeds before constructing the map at all, and
+    // seed it directly at the resolved center — the user's actual location,
+    // or the regional default on failure/denial/unavailability. This is
+    // silent (no toast, no locationError) since it's automatic rather than a
+    // response to a click.
+    if (initialView) {
+      initMap(initialView.center, initialView.zoom);
+    } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          if (cancelled) return;
           const { latitude, longitude } = position.coords;
-          map.easeTo({
-            center: [longitude, latitude],
-            zoom: 13,
-            duration: 600,
-          });
+
+          initMap([longitude, latitude], 13);
         },
-        () => {},
+        () => {
+          initMap(DEFAULT_CENTER, DEFAULT_ZOOM);
+        },
         { enableHighAccuracy: true, timeout: 10000 },
       );
+    } else {
+      initMap(DEFAULT_CENTER, DEFAULT_ZOOM);
     }
-
-    // mapbox-gl only calls resize() on window resize (trackResize), not on
-    // container resize — the DetailDrawer opening/closing changes the map
-    // container's width via flex layout without firing a window resize
-    // event, so the canvas would otherwise keep rendering at its stale size.
-    const resizeObserver = new ResizeObserver(() => {
-      map.resize();
-      if (pendingCenterRef.current) {
-        map.easeTo({ center: pendingCenterRef.current, duration: 300 });
-        pendingCenterRef.current = null;
-      }
-    });
-    resizeObserver.observe(containerRef.current);
-
-    const supabase = createClient();
-
-    async function refresh() {
-      // isStyleLoaded() is intentionally not part of this guard: refresh()
-      // is called synchronously right after addSource() in the "load"
-      // handler below, and the freshly-added source hasn't finished
-      // loading yet at that point, so isStyleLoaded() would still read
-      // false and silently skip the very first fetch (placemarks would
-      // then only appear after a pan triggers moveend).
-      if (!map.getSource(SOURCE_ID)) return;
-      const bounds = map.getBounds();
-      if (!bounds) return;
-      const { categoryIds } = filtersRef.current;
-
-      const requestId = ++requestIdRef.current;
-      inFlightRef.current += 1;
-      setIsFetching(true);
-
-      const { data, error } = await supabase.rpc('placemarks_geojson', {
-        in_west: bounds.getWest(),
-        in_south: bounds.getSouth(),
-        in_east: bounds.getEast(),
-        in_north: bounds.getNorth(),
-        in_category_ids: categoryIds,
-      });
-
-      inFlightRef.current -= 1;
-      if (inFlightRef.current === 0) setIsFetching(false);
-
-      // A newer request superseded this one — don't let a slow, stale
-      // response overwrite fresher data already on the map.
-      if (requestId !== requestIdRef.current) return;
-
-      if (error) {
-        console.error(error);
-        return;
-      }
-
-      const collection = data as PlacemarkCollection;
-      const { visited, wantToGo } = filtersRef.current;
-      const features = collection.features
-        .filter((feature) => {
-          if (visited !== null && feature.properties.visited !== visited)
-            return false;
-          if (wantToGo && !feature.properties.want_to_go) return false;
-          return true;
-        })
-        .map((feature) => {
-          const pinName = pinIconName(feature.properties.category_id);
-          // The category's `icon` name might not resolve to a real
-          // HugeIcons asset (fetch/rasterize can fail — e.g. stale/invalid
-          // data), or the category's pin may not have registered yet; fall
-          // back to the generic pin rather than pointing icon-image at a
-          // name mapbox has never seen.
-          const icon_image = map.hasImage(pinName)
-            ? pinName
-            : FALLBACK_PIN_NAME;
-          return {
-            ...feature,
-            geometry: toPointGeometry(feature.geometry),
-            // Supercluster (used internally by the clustered GeoJSON
-            // source) does not preserve each leaf feature's top-level `id`
-            // once features are clustered, so the click handler can't rely
-            // on feature.id — mirror it into properties, which clustering
-            // does preserve. icon_image is similarly precomputed here
-            // (rather than as a mapbox style expression) since a category's
-            // pin image may not be registered yet when this runs.
-            properties: {
-              ...feature.properties,
-              id: feature.id as string,
-              icon_image,
-            },
-          };
-        });
-
-      const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
-      source.setData({ type: 'FeatureCollection', features });
-    }
-    refreshRef.current = refresh;
-
-    // setStyle() (used by the basemap switcher) wipes every source/layer/
-    // image not defined in the style itself and fires 'style.load' — unlike
-    // 'load', which only ever fires once per Map instance. Everything that
-    // setStyle destroys has to be re-added here so it reruns on every style
-    // load, including the first.
-    map.on('style.load', async () => {
-      quietenBasemap(map);
-      registerFallbackPin(map);
-
-      map.addSource(SOURCE_ID, {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-        cluster: true,
-        clusterMaxZoom: 13,
-        clusterRadius: 25,
-      });
-
-      map.addLayer({
-        id: CLUSTER_HALO_LAYER,
-        type: 'circle',
-        source: SOURCE_ID,
-        filter: [
-          'all',
-          ['has', 'point_count'],
-          ['>=', ['get', 'point_count'], LARGE_CLUSTER_THRESHOLD],
-        ],
-        paint: {
-          'circle-radius': 36,
-          'circle-color': cssVar('--crimson', '#d5202b'),
-          'circle-opacity': 0.15,
-        },
-      });
-
-      map.addLayer({
-        id: CLUSTER_CIRCLE_LAYER,
-        type: 'circle',
-        source: SOURCE_ID,
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': cssVar('--crimson', '#d5202b'),
-          'circle-radius': [
-            'step',
-            ['get', 'point_count'],
-            17,
-            25,
-            22,
-            LARGE_CLUSTER_THRESHOLD,
-            29,
-          ],
-          'circle-stroke-width': 2,
-          'circle-stroke-color': cssVar('--pin-stroke', '#0c0b09'),
-        },
-      });
-
-      map.addLayer({
-        id: CLUSTER_COUNT_LAYER,
-        type: 'symbol',
-        source: SOURCE_ID,
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': ['get', 'point_count_abbreviated'],
-          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
-          'text-size': 11,
-        },
-        paint: {
-          'text-color': cssVar('--on-crimson', '#fff8ea'),
-        },
-      });
-
-      map.addLayer({
-        id: POINT_LAYER,
-        type: 'symbol',
-        source: SOURCE_ID,
-        filter: ['!', ['has', 'point_count']],
-        layout: {
-          // Precomputed per-feature in refresh() below, since a category's
-          // pin image may not have finished registering when this runs.
-          'icon-image': ['coalesce', ['get', 'icon_image'], FALLBACK_PIN_NAME],
-          'icon-size': 1,
-          'icon-anchor': 'bottom',
-          'icon-allow-overlap': true,
-        },
-      });
-
-      await registerCategoryIcons(map, categoryStylesRef.current);
-      // setStyle() also clears the source's data along with the source
-      // itself, so placemarks need re-fetching on every style load, not
-      // just the first.
-      refresh();
-    });
-
-    map.on('load', () => {
-      setMapLoaded(true);
-
-      // Delegated listeners below are keyed by layer-id string on the
-      // Map/Style instance, not bound to the layer object — they survive
-      // setStyle() and re-apply automatically once a layer with the same id
-      // is re-added by the 'style.load' handler above. 'load' only ever
-      // fires once per Map instance, so registering them here (rather than
-      // in 'style.load') is what keeps them from stacking duplicates on
-      // every basemap switch.
-
-      // In add-mode, hovering an existing pin/cluster doesn't lead anywhere
-      // (the click handler below bails on hits), so the cursor should stay
-      // crosshair instead of flipping to pointer and back.
-      map.on(
-        'mouseenter',
-        CLUSTER_CIRCLE_LAYER,
-        () =>
-          (map.getCanvas().style.cursor = addModeRef.current
-            ? 'crosshair'
-            : 'pointer'),
-      );
-      map.on(
-        'mouseleave',
-        CLUSTER_CIRCLE_LAYER,
-        () =>
-          (map.getCanvas().style.cursor = addModeRef.current
-            ? 'crosshair'
-            : ''),
-      );
-      map.on(
-        'mouseenter',
-        POINT_LAYER,
-        () =>
-          (map.getCanvas().style.cursor = addModeRef.current
-            ? 'crosshair'
-            : 'pointer'),
-      );
-      map.on(
-        'mouseleave',
-        POINT_LAYER,
-        () =>
-          (map.getCanvas().style.cursor = addModeRef.current
-            ? 'crosshair'
-            : ''),
-      );
-
-      map.on('click', CLUSTER_CIRCLE_LAYER, (event) => {
-        const [feature] = map.queryRenderedFeatures(event.point, {
-          layers: [CLUSTER_CIRCLE_LAYER],
-        });
-        const clusterId = feature?.properties?.cluster_id;
-        if (clusterId == null || !feature || feature.geometry.type !== 'Point')
-          return;
-        const center = feature.geometry.coordinates as [number, number];
-        const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
-        source.getClusterExpansionZoom(clusterId, (err, zoom) => {
-          if (err || zoom == null) return;
-          map.easeTo({ center, zoom });
-        });
-      });
-
-      map.on('click', POINT_LAYER, (event) => {
-        const [feature] = map.queryRenderedFeatures(event.point, {
-          layers: [POINT_LAYER],
-        });
-        const id = feature?.properties?.id ?? feature?.id;
-        if (id == null) return;
-        // Opening the drawer shrinks the map container (see the
-        // ResizeObserver above), which re-centers the viewport around its
-        // old center in the new, narrower canvas — re-queue the clicked
-        // placemark's coordinates so it ends up centered in that view
-        // instead of drifting toward the edge.
-        if (feature?.geometry.type === 'Point') {
-          pendingCenterRef.current = feature.geometry.coordinates as [
-            number,
-            number,
-          ];
-        }
-        const params = new URLSearchParams(window.location.search);
-        params.set('id', String(id));
-        // Plain router.push() here round-trips through the server (this
-        // route reads cookies, so it's fully dynamic) and, per
-        // node_modules/next/dist/docs/01-app/02-guides/single-page-applications.md
-        // ("Shallow routing on the client"), that RSC round-trip can resolve
-        // without ever committing the URL/search-param change for
-        // same-page navigations. Opening/closing the detail pane is pure
-        // client state, so use the documented shallow-routing escape hatch
-        // (history.pushState, which Next's router patches to stay in sync
-        // with useSearchParams) instead of router.push().
-        window.history.pushState(null, '', `?${params.toString()}`);
-      });
-
-      // Generic background click for add-mode — registered separately from
-      // the layer-scoped handlers above since it must fire on empty map
-      // area, not a specific layer. Bails if the click actually hit an
-      // existing point or cluster so clicking a pin still opens its detail
-      // instead of creating a duplicate underneath it.
-      map.on('click', (event) => {
-        if (!addModeRef.current) return;
-        const hits = map.queryRenderedFeatures(event.point, {
-          layers: [POINT_LAYER, CLUSTER_CIRCLE_LAYER],
-        });
-        if (hits.length > 0) return;
-        addModeRef.current = false;
-        setAddMode(false);
-        map.getCanvas().style.cursor = '';
-        openCreatePanel(event.lngLat.lat, event.lngLat.lng);
-      });
-    });
-
-    map.on('moveend', () => {
-      updateViewParams(map);
-      if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
-      moveTimeoutRef.current = setTimeout(() => refreshRef.current(), 300);
-    });
 
     return () => {
       cancelled = true;
 
       if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
 
-      resizeObserver.disconnect();
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
       draftMarkerRef.current?.remove();
       draftMarkerRef.current = null;
-      map.remove();
+      mapRef.current?.remove();
       mapRef.current = null;
     };
     // mapControls is read once to register this map instance's refresh/flyTo
