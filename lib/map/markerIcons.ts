@@ -148,11 +148,19 @@ function fetchIconData(iconName: string): Promise<IconSvgElement> {
   return cached;
 }
 
-// Rasterized pins only depend on (icon name, category color) — neither of
-// which change within a session — so the pixel data can be reused across
-// setStyle() calls (which wipe every mapbox image) without redoing the
-// fetch + canvas work, just a cheap re-addImage.
+// Keyed by (category id, color, icon), so editing a category's color/icon
+// bakes fresh pixel data instead of reusing stale pixels left over from a
+// previous MapView mount — this cache is a module-level Map, so it otherwise
+// survives client-side unmount/remount (e.g. navigating to /categories and
+// back) even though `map.hasImage()` does not. When the style hasn't changed,
+// the same key still lets the pixel data be reused across setStyle() calls
+// (which wipe every mapbox image) without redoing the fetch + canvas work,
+// just a cheap re-addImage.
 const pinDataCache = new Map<string, ImageData>();
+
+function pinCacheKey(categoryId: string, color: string, icon: string | null) {
+  return `${categoryId}:${color}:${icon ?? ''}`;
+}
 
 async function buildPinImageData(
   color: string,
@@ -190,10 +198,11 @@ async function ensureCategoryPin(
   const name = pinIconName(categoryId);
   if (map.hasImage(name)) return;
 
-  let imageData = pinDataCache.get(categoryId);
+  const cacheKey = pinCacheKey(categoryId, color, icon);
+  let imageData = pinDataCache.get(cacheKey);
   if (!imageData) {
     imageData = await buildPinImageData(color, icon);
-    pinDataCache.set(categoryId, imageData);
+    pinDataCache.set(cacheKey, imageData);
   }
   if (map.hasImage(name)) return; // re-check after the await
   map.addImage(name, imageData, { pixelRatio: PIXEL_RATIO });
