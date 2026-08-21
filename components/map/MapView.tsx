@@ -68,6 +68,9 @@ const DEFAULT_ZOOM = 6;
 function parseInitialView(
   params: URLSearchParams,
 ): { center: [number, number]; zoom: number } | null {
+  if (!params.has('mlat') || !params.has('mlng') || !params.has('z')) {
+    return null;
+  }
   const lat = Number(params.get('mlat'));
   const lng = Number(params.get('mlng'));
   const zoom = Number(params.get('z'));
@@ -303,6 +306,8 @@ export default function MapView() {
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
 
+    let cancelled = false;
+
     const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     if (!mapboxToken) {
       console.error('Missing NEXT_PUBLIC_MAPBOX_TOKEN environment variable.');
@@ -331,17 +336,43 @@ export default function MapView() {
     map.addControl(new ZoomControl(), 'top-right');
     // Freed up bottom-right (Mapbox's default attribution anchor) for
     // BasemapSwitcher by moving attribution to bottom-left instead.
-    map.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-left');
+    map.addControl(
+      new mapboxgl.AttributionControl({ compact: true }),
+      'bottom-left',
+    );
 
     mapControls.register({
       refresh: () => refreshRef.current(),
       flyTo: (lngLat, options) =>
         map.easeTo({
           center: lngLat,
-          zoom: options?.zoom != null ? Math.max(map.getZoom(), options.zoom) : map.getZoom(),
+          zoom:
+            options?.zoom != null
+              ? Math.max(map.getZoom(), options.zoom)
+              : map.getZoom(),
           duration: 600,
         }),
     });
+
+    // No pre-defined location in the URL — try to center on the user's
+    // actual location instead of sitting at the fixed regional default.
+    // Failure/denial is silent (no toast, no locationError) since this is
+    // automatic rather than a response to a click.
+    if (!initialView && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          if (cancelled) return;
+          const { latitude, longitude } = position.coords;
+          map.easeTo({
+            center: [longitude, latitude],
+            zoom: 13,
+            duration: 600,
+          });
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000 },
+      );
+    }
 
     // mapbox-gl only calls resize() on window resize (trackResize), not on
     // container resize — the DetailDrawer opening/closing changes the map
@@ -410,7 +441,9 @@ export default function MapView() {
           // data), or the category's pin may not have registered yet; fall
           // back to the generic pin rather than pointing icon-image at a
           // name mapbox has never seen.
-          const icon_image = map.hasImage(pinName) ? pinName : FALLBACK_PIN_NAME;
+          const icon_image = map.hasImage(pinName)
+            ? pinName
+            : FALLBACK_PIN_NAME;
           return {
             ...feature,
             geometry: toPointGeometry(feature.geometry),
@@ -643,7 +676,10 @@ export default function MapView() {
     });
 
     return () => {
+      cancelled = true;
+
       if (moveTimeoutRef.current) clearTimeout(moveTimeoutRef.current);
+
       resizeObserver.disconnect();
       draftMarkerRef.current?.remove();
       draftMarkerRef.current = null;
