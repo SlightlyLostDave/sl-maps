@@ -11,11 +11,13 @@ export default function AddPlacemarkToolbar({
   onToggleAddMode,
   onUseLocation,
   locationError,
+  isLocating,
 }: {
   addMode: boolean;
   onToggleAddMode: () => void;
   onUseLocation: () => void;
   locationError?: string | null;
+  isLocating?: boolean;
 }) {
   return (
     <div className="absolute right-3 top-23 z-10 flex flex-col items-end gap-2">
@@ -33,6 +35,7 @@ export default function AddPlacemarkToolbar({
         <button
           type="button"
           onClick={onUseLocation}
+          disabled={isLocating}
           aria-label="Use my location"
           title="Use my location"
           className={buttonClass}

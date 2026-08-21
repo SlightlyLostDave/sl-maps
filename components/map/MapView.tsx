@@ -236,6 +236,7 @@ export default function MapView() {
   const [isFetching, setIsFetching] = useState(false);
   const [addMode, setAddMode] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
   const [basemapId, setBasemapId] = useState<BasemapId>(() =>
     loadStoredBasemapId(),
   );
@@ -252,12 +253,15 @@ export default function MapView() {
 
   function handleUseLocation() {
     setLocationError(null);
+    setIsLocating(true);
     if (!navigator.geolocation) {
       setLocationError("Geolocation isn't available in this browser.");
+      setIsLocating(false);
       return;
     }
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        setIsLocating(false);
         const { latitude, longitude } = position.coords;
         mapRef.current?.easeTo({
           center: [longitude, latitude],
@@ -265,7 +269,10 @@ export default function MapView() {
           duration: 600,
         });
       },
-      () => setLocationError('Location permission was denied.'),
+      () => {
+        setIsLocating(false);
+        setLocationError('Location permission was denied.');
+      },
       { enableHighAccuracy: true, timeout: 10000 },
     );
   }
@@ -754,6 +761,7 @@ export default function MapView() {
           onToggleAddMode={() => setAddMode((v) => !v)}
           onUseLocation={handleUseLocation}
           locationError={locationError}
+          isLocating={isLocating}
         />
       )}
       {mapLoaded && (
@@ -763,7 +771,9 @@ export default function MapView() {
         />
       )}
       {!mapLoaded && <MapLoadingOverlay />}
-      {mapLoaded && (filtersPending || isFetching) && <MapLoadingOverlay dim />}
+      {mapLoaded && (filtersPending || isFetching || isLocating) && (
+        <MapLoadingOverlay dim />
+      )}
     </>
   );
 }
