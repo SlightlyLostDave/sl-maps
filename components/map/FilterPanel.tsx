@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import CategoryFilter from './CategoryFilter';
 import StatusFilter from './StatusFilter';
-import SearchField from './SearchField';
 import { useFilterParams } from './useFilterParams';
 
 export type CategoryItem = {
@@ -80,10 +79,6 @@ export default function FilterPanel({
         <span className="text-ink">{matchingCount ?? '…'}</span> of {totalCount}{' '}
         placemarks
       </p>
-
-      <div className="shrink-0">
-        <SearchField />
-      </div>
 
       <div className="flex min-h-0 flex-1 flex-col border-t border-line pt-3">
         <CategoryFilter categories={categories} />
