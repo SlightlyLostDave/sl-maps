@@ -58,6 +58,7 @@ export default function PlacemarkForm({
   onSaved,
   onCancel,
   onDeleted,
+  submitLabel,
 }: {
   mode: 'create' | 'edit';
   placemarkId?: string;
@@ -67,6 +68,7 @@ export default function PlacemarkForm({
   onSaved: (id: string) => void;
   onCancel: () => void;
   onDeleted?: () => void;
+  submitLabel?: string;
 }) {
   const [values, setValues] = useState<PlacemarkFormValues>(
     initial ?? emptyValues,
@@ -323,9 +325,8 @@ export default function PlacemarkForm({
         >
           {isPending
             ? 'Saving…'
-            : mode === 'create'
-              ? 'Create placemark'
-              : 'Save changes'}
+            : (submitLabel ??
+              (mode === 'create' ? 'Create placemark' : 'Save changes'))}
         </button>
         <button
           type="button"

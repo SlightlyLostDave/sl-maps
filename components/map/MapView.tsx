@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -244,6 +244,10 @@ export default function MapView() {
   const filtersKey = JSON.stringify(filters);
   const { isPending: filtersPending } = useFilterTransition();
   const mapControls = useMapControls();
+  // MapView fully unmounts/remounts between routes (they're separate
+  // pages), so this is stable for the component's lifetime — same as
+  // basemapId's "read once at mount" treatment.
+  const isReviewQueue = usePathname() === '/review';
 
   const isCreating = searchParams.get('id') === 'new';
   const draftLat = searchParams.get('lat');
@@ -403,6 +407,7 @@ export default function MapView() {
           in_east: bounds.getEast(),
           in_north: bounds.getNorth(),
           in_category_ids: categoryIds,
+          in_needs_review: isReviewQueue,
         });
 
         inFlightRef.current -= 1;
@@ -777,7 +782,7 @@ export default function MapView() {
   return (
     <>
       <div ref={containerRef} className="h-full w-full" />
-      {mapLoaded && (
+      {mapLoaded && !isReviewQueue && (
         <AddPlacemarkToolbar
           addMode={addMode}
           onToggleAddMode={() => setAddMode((v) => !v)}
