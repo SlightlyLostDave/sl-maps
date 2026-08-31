@@ -476,7 +476,7 @@ export default function MapView() {
           type: 'geojson',
           data: { type: 'FeatureCollection', features: [] },
           cluster: true,
-          clusterMaxZoom: 13,
+          clusterMaxZoom: 11,
           clusterRadius: 25,
         });
 
@@ -548,6 +548,25 @@ export default function MapView() {
             'icon-size': 1,
             'icon-anchor': 'bottom',
             'icon-allow-overlap': true,
+            // Anchored 'top' with a downward offset so the label sits just
+            // below the pin's tip (the feature point) without needing the
+            // pin's pixel height — icon-anchor 'bottom' already renders the
+            // icon upward from that same point.
+            'text-field': ['get', 'name'],
+            'text-font': ['DIN Pro Medium', 'Arial Unicode MS Bold'],
+            'text-size': 11,
+            'text-anchor': 'top',
+            'text-offset': [0, 0.6],
+            // Pins must always stay visible; let mapbox's built-in collision
+            // detection hide only the text in crowded areas so labels thin
+            // out gracefully instead of overlapping, at any zoom level.
+            'text-allow-overlap': false,
+            'text-optional': true,
+          },
+          paint: {
+            'text-color': cssVar('--ink', '#f0e8d6'),
+            'text-halo-color': cssVar('--pin-stroke', '#0c0b09'),
+            'text-halo-width': 1,
           },
         });
 
