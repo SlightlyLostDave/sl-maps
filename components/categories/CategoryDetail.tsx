@@ -1,11 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from '@lib/supabase/server';
 import {
   createCategory,
   updateCategory,
   deleteCategory,
-} from "@/app/actions/categories";
-import SubmitButton from "@/components/ui/SubmitButton";
-import IconPicker from "@/components/categories/IconPicker";
+} from '@/app/actions/categories';
+import SubmitButton from '@/components/ui/SubmitButton';
+import IconPicker from '@/components/categories/IconPicker';
 
 type CategoryDetailRow = {
   id: string;
@@ -21,22 +21,24 @@ type CategoryDetailRow = {
 type CategoryOption = { id: string; name: string };
 
 const ERROR_MESSAGES: Record<string, string> = {
-  name_required: "Name is required.",
-  invalid_json: "Attributes schema must be valid JSON (an object).",
-  invalid_icon: "Icon must be a valid HugeIcons icon name.",
+  name_required: 'Name is required.',
+  invalid_json: 'Attributes schema must be valid JSON (an object).',
+  invalid_icon: 'Icon must be a valid HugeIcons icon name.',
   has_children:
     "This category has subcategories, or the chosen parent isn't a top-level category — categories can only nest one level deep.",
   needs_replacement:
-    "This category has active placemarks — choose a replacement above before deleting.",
+    'This category has active placemarks — choose a replacement above before deleting.',
 };
 
 async function getCategory(id: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("categories")
-    .select("id, name, slug, color, icon, parent_id, sort_order, attributes_schema")
-    .eq("id", id)
-    .is("deleted_at", null)
+    .from('categories')
+    .select(
+      'id, name, slug, color, icon, parent_id, sort_order, attributes_schema',
+    )
+    .eq('id', id)
+    .is('deleted_at', null)
     .maybeSingle<CategoryDetailRow>();
 
   if (error) throw error;
@@ -46,13 +48,13 @@ async function getCategory(id: string) {
 async function getTopLevelCategories(excludeId?: string) {
   const supabase = await createClient();
   let query = supabase
-    .from("categories")
-    .select("id, name")
-    .is("deleted_at", null)
-    .is("parent_id", null)
-    .order("sort_order", { ascending: true });
+    .from('categories')
+    .select('id, name')
+    .is('deleted_at', null)
+    .is('parent_id', null)
+    .order('sort_order', { ascending: true });
 
-  if (excludeId) query = query.neq("id", excludeId);
+  if (excludeId) query = query.neq('id', excludeId);
 
   const { data, error } = await query.returns<CategoryOption[]>();
   if (error) throw error;
@@ -62,11 +64,11 @@ async function getTopLevelCategories(excludeId?: string) {
 async function getOtherCategories(excludeId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("categories")
-    .select("id, name")
-    .is("deleted_at", null)
-    .neq("id", excludeId)
-    .order("sort_order", { ascending: true })
+    .from('categories')
+    .select('id, name')
+    .is('deleted_at', null)
+    .neq('id', excludeId)
+    .order('sort_order', { ascending: true })
     .returns<CategoryOption[]>();
   if (error) throw error;
   return data;
@@ -76,15 +78,15 @@ async function getDependentCounts(id: string) {
   const supabase = await createClient();
   const [{ count: placemarkCount }, { count: childCount }] = await Promise.all([
     supabase
-      .from("placemarks")
-      .select("id", { count: "exact", head: true })
-      .eq("category_id", id)
-      .is("deleted_at", null),
+      .from('placemarks')
+      .select('id', { count: 'exact', head: true })
+      .eq('category_id', id)
+      .is('deleted_at', null),
     supabase
-      .from("categories")
-      .select("id", { count: "exact", head: true })
-      .eq("parent_id", id)
-      .is("deleted_at", null),
+      .from('categories')
+      .select('id', { count: 'exact', head: true })
+      .eq('parent_id', id)
+      .is('deleted_at', null),
   ]);
   return { placemarkCount: placemarkCount ?? 0, childCount: childCount ?? 0 };
 }
@@ -93,13 +95,13 @@ function ErrorBanner({ error }: { error?: string }) {
   if (!error) return null;
   return (
     <p className="rounded-md border border-crimson-deep bg-crimson-wash px-3 py-2 text-sm text-crimson-lift">
-      {ERROR_MESSAGES[error] ?? "Something went wrong."}
+      {ERROR_MESSAGES[error] ?? 'Something went wrong.'}
     </p>
   );
 }
 
 const inputClass =
-  "rounded-md border border-line bg-ground-2 px-3 py-2 text-sm text-ink";
+  'rounded-md border border-line bg-ground-2 px-3 py-2 text-sm text-ink';
 
 export default async function CategoryDetail({
   id,
@@ -116,7 +118,7 @@ export default async function CategoryDetail({
     );
   }
 
-  if (id === "new") {
+  if (id === 'new') {
     const parentOptions = await getTopLevelCategories();
     return (
       <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
@@ -127,7 +129,11 @@ export default async function CategoryDetail({
 
         <ErrorBanner error={error} />
 
-        <form key="new" action={createCategory} className="flex max-w-lg flex-col gap-4">
+        <form
+          key="new"
+          action={createCategory}
+          className="flex max-w-lg flex-col gap-4"
+        >
           <CategoryFields parentOptions={parentOptions} />
           <div>
             <SubmitButton>Create category</SubmitButton>
@@ -167,7 +173,11 @@ export default async function CategoryDetail({
 
       <ErrorBanner error={error} />
 
-      <form key={category.id} action={updateWithId} className="flex max-w-lg flex-col gap-4">
+      <form
+        key={category.id}
+        action={updateWithId}
+        className="flex max-w-lg flex-col gap-4"
+      >
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium text-ink-dim">Slug</span>
           <input
@@ -184,18 +194,20 @@ export default async function CategoryDetail({
       </form>
 
       <section className="max-w-lg rounded-md border border-crimson-deep bg-crimson-wash p-4">
-        <h3 className="mb-2 text-sm font-medium text-crimson-lift">Delete category</h3>
+        <h3 className="mb-2 text-sm font-medium text-crimson-lift">
+          Delete category
+        </h3>
         <form action={deleteWithId} className="flex flex-col gap-3">
           {childCount > 0 && (
             <p className="text-xs text-crimson-lift">
-              {childCount} subcategor{childCount === 1 ? "y" : "ies"} still
+              {childCount} subcategor{childCount === 1 ? 'y' : 'ies'} still
               reference this category. Reassign or delete them first.
             </p>
           )}
           {placemarkCount > 0 && (
             <label className="flex flex-col gap-1">
               <span className="text-xs font-medium text-ink-dim">
-                {placemarkCount} placemark{placemarkCount === 1 ? "" : "s"} use
+                {placemarkCount} placemark{placemarkCount === 1 ? '' : 's'} use
                 this category — move them to:
               </span>
               <select
@@ -220,7 +232,7 @@ export default async function CategoryDetail({
               disabled={childCount > 0}
               className="self-start border-crimson-deep text-crimson-lift"
             >
-              {placemarkCount > 0 ? "Reassign & delete" : "Delete category"}
+              {placemarkCount > 0 ? 'Reassign & delete' : 'Delete category'}
             </SubmitButton>
           </div>
         </form>
@@ -244,7 +256,7 @@ function CategoryFields({
           type="text"
           name="name"
           required
-          defaultValue={category?.name ?? ""}
+          defaultValue={category?.name ?? ''}
           className={inputClass}
         />
       </label>
@@ -255,7 +267,7 @@ function CategoryFields({
           <input
             type="color"
             name="color"
-            defaultValue={category?.color ?? "#7C9A55"}
+            defaultValue={category?.color ?? '#7C9A55'}
             className={`${inputClass} h-9 w-20 p-1`}
           />
         </label>
@@ -266,10 +278,12 @@ function CategoryFields({
       </div>
 
       <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-ink-dim">Parent category</span>
+        <span className="text-xs font-medium text-ink-dim">
+          Parent category
+        </span>
         <select
           name="parent_id"
-          defaultValue={category?.parent_id ?? ""}
+          defaultValue={category?.parent_id ?? ''}
           className={inputClass}
         >
           <option value="">No parent (top-level)</option>
@@ -300,7 +314,11 @@ function CategoryFields({
         <textarea
           name="attributes_schema"
           rows={6}
-          defaultValue={JSON.stringify(category?.attributes_schema ?? {}, null, 2)}
+          defaultValue={JSON.stringify(
+            category?.attributes_schema ?? {},
+            null,
+            2,
+          )}
           className={`${inputClass} font-mono`}
         />
       </label>

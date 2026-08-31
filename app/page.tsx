@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 import { signOut } from '@/app/actions/auth';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@lib/supabase/server';
 import MapExplorer from '@/components/map/MapExplorer';
 
 export default async function Home() {

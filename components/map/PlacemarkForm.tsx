@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition, type FormEvent } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@lib/supabase/client';
 import {
   createPlacemark,
   savePlacemark,

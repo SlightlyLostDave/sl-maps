@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@lib/supabase/client';
 
 // At 22k+ unsorted rows, rendering the whole backlog as DOM list items isn't
 // viable, so the queue is paginated server-side in PAGE_SIZE chunks ordered

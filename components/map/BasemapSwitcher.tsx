@@ -1,7 +1,7 @@
 'use client';
 
 import { HugeiconsIcon } from '@hugeicons/react';
-import { BASEMAPS, otherBasemapId, type BasemapId } from '@/lib/map/basemaps';
+import { BASEMAPS, otherBasemapId, type BasemapId } from '@lib/map/basemaps';
 
 const buttonClass =
   'grid h-8 w-8 place-items-center rounded-[4px] text-ink-dim hover:text-ink hover:border-crimson';

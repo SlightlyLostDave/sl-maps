@@ -1,8 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
-import { slugify } from '@/lib/slug';
+import { createClient } from '@lib/supabase/server';
+import { slugify } from '@lib/slug';
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 

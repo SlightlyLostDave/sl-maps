@@ -5,24 +5,25 @@ import { useSearchParams, usePathname } from 'next/navigation';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@lib/supabase/client';
 import {
   buildCategoryStyles,
   type CategoryIconStyle,
-} from '@/lib/map/categoryStyle';
+} from '@lib/map/categoryStyle';
 import {
   pinIconName,
   FALLBACK_PIN_NAME,
+  FALLBACK_PIN_VISITED_NAME,
   registerFallbackPin,
   registerCategoryIcons,
-} from '@/lib/map/markerIcons';
+} from '@lib/map/markerIcons';
 import {
   BASEMAPS,
   loadStoredBasemapId,
   otherBasemapId,
   saveBasemapId,
   type BasemapId,
-} from '@/lib/map/basemaps';
+} from '@lib/map/basemaps';
 import MapLoadingOverlay from './MapLoadingOverlay';
 import AddPlacemarkToolbar from './AddPlacemarkToolbar';
 import BasemapSwitcher from './BasemapSwitcher';
@@ -431,15 +432,20 @@ export default function MapView() {
             return true;
           })
           .map((feature) => {
-            const pinName = pinIconName(feature.properties.category_id);
+            const pinName = pinIconName(
+              feature.properties.category_id,
+              feature.properties.visited,
+            );
             // The category's `icon` name might not resolve to a real
             // HugeIcons asset (fetch/rasterize can fail — e.g. stale/invalid
             // data), or the category's pin may not have registered yet; fall
-            // back to the generic pin rather than pointing icon-image at a
-            // name mapbox has never seen.
+            // back to the generic pin (still visited-aware) rather than
+            // pointing icon-image at a name mapbox has never seen.
             const icon_image = map.hasImage(pinName)
               ? pinName
-              : FALLBACK_PIN_NAME;
+              : feature.properties.visited
+                ? FALLBACK_PIN_VISITED_NAME
+                : FALLBACK_PIN_NAME;
             return {
               ...feature,
               geometry: toPointGeometry(feature.geometry),

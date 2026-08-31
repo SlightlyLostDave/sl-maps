@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@lib/supabase/client';
 import Skeleton from '@/components/ui/Skeleton';
 import PlacemarkForm from './PlacemarkForm';
 import { detailsToFormValues, type PlacemarkDetails } from './placemarkDetails';

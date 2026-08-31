@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@lib/supabase/server';
 import ReviewExplorer from '@/components/review/ReviewExplorer';
 
 async function firstUnsortedId(): Promise<string | null> {

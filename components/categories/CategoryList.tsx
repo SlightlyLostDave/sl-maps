@@ -1,5 +1,5 @@
-import CategoryNavLink from "./CategoryNavLink";
-import { createClient } from "@/lib/supabase/server";
+import CategoryNavLink from './CategoryNavLink';
+import { createClient } from '@lib/supabase/server';
 
 const PAGE_SIZE = 1000;
 
@@ -17,10 +17,10 @@ type CategoryRow = {
 async function getCategories() {
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from("categories")
-    .select("id, name, slug, color, parent_id, sort_order")
-    .is("deleted_at", null)
-    .order("sort_order", { ascending: true })
+    .from('categories')
+    .select('id, name, slug, color, parent_id, sort_order')
+    .is('deleted_at', null)
+    .order('sort_order', { ascending: true })
     .returns<CategoryRow[]>();
 
   if (error) throw error;
@@ -32,9 +32,9 @@ async function getCategoryCounts(supabase: SupabaseServerClient) {
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const { data, error } = await supabase
-      .from("placemarks")
-      .select("category_id")
-      .is("deleted_at", null)
+      .from('placemarks')
+      .select('category_id')
+      .is('deleted_at', null)
       .range(offset, offset + PAGE_SIZE - 1)
       .returns<{ category_id: string }[]>();
 
@@ -64,11 +64,11 @@ function CategoryRowLink({
       <CategoryNavLink
         href={`/categories?id=${category.id}`}
         className={`flex items-center justify-between gap-2 rounded-md px-2 py-1.5 text-sm transition-colors ${
-          indent ? "ml-6" : ""
+          indent ? 'ml-6' : ''
         } ${
           isSelected
-            ? "bg-ground-2 text-ink"
-            : "text-ink-dim hover:bg-ground-2 hover:text-ink"
+            ? 'bg-ground-2 text-ink'
+            : 'text-ink-dim hover:bg-ground-2 hover:text-ink'
         }`}
       >
         <span className="flex min-w-0 items-center gap-2">
@@ -79,7 +79,9 @@ function CategoryRowLink({
           <span className="truncate">{category.name}</span>
         </span>
         <span className="flex shrink-0 items-center gap-2">
-          <span className="font-mono text-xs text-ink-faint">{category.slug}</span>
+          <span className="font-mono text-xs text-ink-faint">
+            {category.slug}
+          </span>
           <span className="font-mono text-xs text-ink-faint">{count}</span>
         </span>
       </CategoryNavLink>
@@ -102,7 +104,9 @@ export default async function CategoryList({
     .filter((c) => !c.parent_id)
     .sort((a, b) => a.name.localeCompare(b.name));
   const childrenOf = (id: string) =>
-    categories.filter((c) => c.parent_id === id).sort((a, b) => a.name.localeCompare(b.name));
+    categories
+      .filter((c) => c.parent_id === id)
+      .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <aside className="flex w-80 shrink-0 min-h-0 flex-col gap-4 border-r border-line bg-bg-raised p-5">
@@ -111,9 +115,9 @@ export default async function CategoryList({
         <CategoryNavLink
           href="/categories?id=new"
           className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-            selectedId === "new"
-              ? "bg-ground-2 text-ink"
-              : "text-ink-dim hover:bg-ground-2 hover:text-ink"
+            selectedId === 'new'
+              ? 'bg-ground-2 text-ink'
+              : 'text-ink-dim hover:bg-ground-2 hover:text-ink'
           }`}
         >
           + New category

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useEffect, useRef, useState } from 'react';
+import { createClient } from '@lib/supabase/client';
 
 export type TagOption = { id: string; name: string };
 export type SelectedTag = { id?: string; name: string };
@@ -13,7 +13,7 @@ export default function TagInput({
   selected: SelectedTag[];
   onChange: (tags: SelectedTag[]) => void;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<TagOption[]>([]);
   const [open, setOpen] = useState(false);
   const requestIdRef = useRef(0);
@@ -25,11 +25,11 @@ export default function TagInput({
     const timer = setTimeout(async () => {
       const supabase = createClient();
       const { data, error } = await supabase
-        .from("tags")
-        .select("id, name")
-        .is("deleted_at", null)
-        .ilike("name", `%${q}%`)
-        .order("usage_count", { ascending: false })
+        .from('tags')
+        .select('id, name')
+        .is('deleted_at', null)
+        .ilike('name', `%${q}%`)
+        .order('usage_count', { ascending: false })
         .limit(8);
       if (requestId !== requestIdRef.current || error || !data) return;
       setSuggestions(data as TagOption[]);
@@ -44,12 +44,14 @@ export default function TagInput({
   const filteredSuggestions = trimmedQuery
     ? suggestions.filter((s) => !selectedNames.has(s.name.toLowerCase()))
     : [];
-  const exactMatch = suggestions.some((s) => s.name.toLowerCase() === trimmedQuery.toLowerCase());
+  const exactMatch = suggestions.some(
+    (s) => s.name.toLowerCase() === trimmedQuery.toLowerCase(),
+  );
 
   function addTag(tag: SelectedTag) {
     if (selectedNames.has(tag.name.toLowerCase())) return;
     onChange([...selected, tag]);
-    setQuery("");
+    setQuery('');
     setSuggestions([]);
   }
 
@@ -91,12 +93,16 @@ export default function TagInput({
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 120)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && query.trim()) {
+            if (e.key === 'Enter' && query.trim()) {
               e.preventDefault();
               const match = suggestions.find(
                 (s) => s.name.toLowerCase() === query.trim().toLowerCase(),
               );
-              addTag(match ? { id: match.id, name: match.name } : { name: query.trim() });
+              addTag(
+                match
+                  ? { id: match.id, name: match.name }
+                  : { name: query.trim() },
+              );
             }
           }}
           placeholder="Add a tag…"

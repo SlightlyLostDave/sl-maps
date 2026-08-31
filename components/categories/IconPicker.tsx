@@ -1,22 +1,25 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { HugeiconsIcon } from "@hugeicons/react";
-import type { IconSvgElement } from "@hugeicons/react";
-import iconNames from "@/lib/map/hugeiconsNames.json";
+import { useEffect, useRef, useState } from 'react';
+import { HugeiconsIcon } from '@hugeicons/react';
+import type { IconSvgElement } from '@hugeicons/react';
+import iconNames from '@lib/map/hugeiconsNames.json';
 
 const MAX_SUGGESTIONS = 8;
 
 export default function IconPicker({
   defaultValue,
-  name = "icon",
+  name = 'icon',
 }: {
   defaultValue?: string | null;
   name?: string;
 }) {
-  const [value, setValue] = useState(defaultValue ?? "");
+  const [value, setValue] = useState(defaultValue ?? '');
   const [open, setOpen] = useState(false);
-  const [resolved, setResolved] = useState<{ name: string; icon: IconSvgElement } | null>(null);
+  const [resolved, setResolved] = useState<{
+    name: string;
+    icon: IconSvgElement;
+  } | null>(null);
   const requestIdRef = useRef(0);
 
   const trimmed = value.trim();
@@ -29,7 +32,8 @@ export default function IconPicker({
     fetch(`/hugeicons/${trimmed}.json`)
       .then((res) => res.json())
       .then((icon: IconSvgElement) => {
-        if (requestId === requestIdRef.current) setResolved({ name: trimmed, icon });
+        if (requestId === requestIdRef.current)
+          setResolved({ name: trimmed, icon });
       });
   }, [trimmed, isKnownName]);
 

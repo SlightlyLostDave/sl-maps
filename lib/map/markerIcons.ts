@@ -31,9 +31,11 @@ const SHOULDER_ANGLE = Math.PI / 2 - Math.acos(HEAD_RADIUS / (TIP.y - HEAD.y));
 // variables — the badge always needs to read as "white circle" and "dark
 // glyph" regardless of which map theme is active.
 const BADGE_COLOR = '#fff8ea';
+const VISITED_BADGE_COLOR = '#7fa556';
 const ICON_INK = '#1c1911';
 
 export const FALLBACK_PIN_NAME = 'pin-fallback';
+export const FALLBACK_PIN_VISITED_NAME = 'pin-fallback-visited';
 
 // Classic teardrop pin: a circular head tapering via two straight tangent
 // lines to a point at the bottom, the same construction as a Google-Maps-
@@ -74,10 +76,10 @@ function drawPinBody(ctx: CanvasRenderingContext2D, color: string) {
   ctx.restore();
 }
 
-function drawBadgeCircle(ctx: CanvasRenderingContext2D) {
+function drawBadgeCircle(ctx: CanvasRenderingContext2D, color: string) {
   ctx.beginPath();
   ctx.arc(HEAD.x, HEAD.y, BADGE_RADIUS, 0, Math.PI * 2);
-  ctx.fillStyle = BADGE_COLOR;
+  ctx.fillStyle = color;
   ctx.fill();
 }
 
@@ -105,10 +107,11 @@ function drawPin(
   ctx: CanvasRenderingContext2D,
   color: string,
   iconSvg: IconSvgElement | null,
+  visited: boolean,
 ) {
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
   drawPinBody(ctx, color);
-  drawBadgeCircle(ctx);
+  drawBadgeCircle(ctx, visited ? VISITED_BADGE_COLOR : BADGE_COLOR);
   if (iconSvg) drawIconGlyph(ctx, iconSvg);
 }
 
@@ -128,8 +131,8 @@ function getFullImageData(ctx: CanvasRenderingContext2D): ImageData {
   return ctx.getImageData(0, 0, WIDTH * PIXEL_RATIO, HEIGHT * PIXEL_RATIO);
 }
 
-export function pinIconName(categoryId: string) {
-  return `pin-${categoryId}`;
+export function pinIconName(categoryId: string, visited: boolean) {
+  return `pin-${categoryId}-${visited ? 'visited' : 'unvisited'}`;
 }
 
 // Fetched once per icon name and cached — every category using the same
@@ -158,13 +161,19 @@ function fetchIconData(iconName: string): Promise<IconSvgElement> {
 // just a cheap re-addImage.
 const pinDataCache = new Map<string, ImageData>();
 
-function pinCacheKey(categoryId: string, color: string, icon: string | null) {
-  return `${categoryId}:${color}:${icon ?? ''}`;
+function pinCacheKey(
+  categoryId: string,
+  color: string,
+  icon: string | null,
+  visited: boolean,
+) {
+  return `${categoryId}:${color}:${icon ?? ''}:${visited}`;
 }
 
 async function buildPinImageData(
   color: string,
   iconName: string | null,
+  visited: boolean,
 ): Promise<ImageData> {
   const ctx = createCanvasContext();
   // A category's stored icon name might not resolve to a real HugeIcons
@@ -176,17 +185,26 @@ async function buildPinImageData(
         return null;
       })
     : null;
-  drawPin(ctx, color, iconSvg);
+  drawPin(ctx, color, iconSvg, visited);
   return getFullImageData(ctx);
 }
 
-export function registerFallbackPin(map: mapboxgl.Map) {
-  if (map.hasImage(FALLBACK_PIN_NAME)) return;
+function registerFallbackVariant(
+  map: mapboxgl.Map,
+  name: string,
+  visited: boolean,
+) {
+  if (map.hasImage(name)) return;
   const ctx = createCanvasContext();
-  drawPin(ctx, FALLBACK_CATEGORY_COLOR, null);
-  map.addImage(FALLBACK_PIN_NAME, getFullImageData(ctx), {
+  drawPin(ctx, FALLBACK_CATEGORY_COLOR, null, visited);
+  map.addImage(name, getFullImageData(ctx), {
     pixelRatio: PIXEL_RATIO,
   });
+}
+
+export function registerFallbackPin(map: mapboxgl.Map) {
+  registerFallbackVariant(map, FALLBACK_PIN_NAME, false);
+  registerFallbackVariant(map, FALLBACK_PIN_VISITED_NAME, true);
 }
 
 async function ensureCategoryPin(
@@ -194,14 +212,15 @@ async function ensureCategoryPin(
   categoryId: string,
   color: string,
   icon: string | null,
+  visited: boolean,
 ) {
-  const name = pinIconName(categoryId);
+  const name = pinIconName(categoryId, visited);
   if (map.hasImage(name)) return;
 
-  const cacheKey = pinCacheKey(categoryId, color, icon);
+  const cacheKey = pinCacheKey(categoryId, color, icon, visited);
   let imageData = pinDataCache.get(cacheKey);
   if (!imageData) {
-    imageData = await buildPinImageData(color, icon);
+    imageData = await buildPinImageData(color, icon, visited);
     pinDataCache.set(cacheKey, imageData);
   }
   if (map.hasImage(name)) return; // re-check after the await
@@ -214,16 +233,22 @@ export async function registerCategoryIcons(
 ) {
   const tasks: Promise<void>[] = [];
   for (const [categoryId, style] of styles) {
-    tasks.push(
-      ensureCategoryPin(map, categoryId, style.color, style.icon).catch(
-        (err) => {
+    for (const visited of [false, true]) {
+      tasks.push(
+        ensureCategoryPin(
+          map,
+          categoryId,
+          style.color,
+          style.icon,
+          visited,
+        ).catch((err) => {
           console.error(
             `Failed to register marker pin for category ${categoryId}`,
             err,
           );
-        },
-      ),
-    );
+        }),
+      );
+    }
   }
   await Promise.all(tasks);
 }

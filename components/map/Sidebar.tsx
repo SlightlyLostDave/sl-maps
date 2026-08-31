@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@lib/supabase/server';
 import SidebarShell from './SidebarShell';
 import FilterPanel, { type CategoryItem } from './FilterPanel';
 import CoordinateSearch from './CoordinateSearch';
