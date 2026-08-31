@@ -70,6 +70,7 @@ export function ReviewQueueProvider({ children }: { children: ReactNode }) {
         .eq('needs_review', true)
         .is('deleted_at', null)
         .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
         .range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
         .returns<RawRow[]>(),
       supabase
@@ -137,12 +138,18 @@ export function ReviewQueueProvider({ children }: { children: ReactNode }) {
   const advanceFrom = useCallback(
     async (currentId: string): Promise<string | null> => {
       if (items.length === 0) return null;
+
       const idx = items.findIndex((item) => item.id === currentId);
-      if (idx === -1) return items[0].id;
-      if (idx < items.length - 1) return items[idx + 1].id;
+
+      if (idx !== -1 && idx < items.length - 1) {
+        const nextId = items[idx + 1].id;
+        loadPage(page);
+        return nextId;
+      }
 
       const targetPage = page + 1 < pageCount ? page + 1 : 0;
       const nextItems = await loadPage(targetPage);
+
       return nextItems.length > 0 ? nextItems[0].id : null;
     },
     [items, page, pageCount, loadPage],

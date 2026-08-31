@@ -15,7 +15,7 @@ import { useReviewQueue } from './ReviewQueueContext';
 export default function ReviewDetailPanel() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
-  const { items, refresh, advanceFrom } = useReviewQueue();
+  const { items, advanceFrom } = useReviewQueue();
   const mapControls = useMapControls();
 
   const [result, setResult] = useState<{
@@ -52,7 +52,6 @@ export default function ReviewDetailPanel() {
 
   async function advance(currentId: string) {
     const next = await advanceFrom(currentId);
-    refresh();
     const params = new URLSearchParams(searchParams.toString());
     if (next) params.set('id', next);
     else params.delete('id');
