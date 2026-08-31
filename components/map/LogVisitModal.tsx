@@ -7,7 +7,7 @@ import {
   useTransition,
   type FormEvent,
 } from 'react';
-import { logVisit } from '@/app/actions/placemarks';
+import { logVisit } from '@app/actions/placemarks';
 import { inputClass } from './PlacemarkForm';
 
 export default function LogVisitModal({

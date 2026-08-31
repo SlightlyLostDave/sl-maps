@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useActionState } from "react";
-import { signIn } from "@/app/actions/auth";
-import Spinner from "@/components/ui/Spinner";
+import { useActionState } from 'react';
+import { signIn } from '@app/actions/auth';
+import Spinner from '@components/ui/Spinner';
 
 export default function SignInPage() {
   const [state, action, pending] = useActionState(signIn, undefined);
@@ -51,7 +51,12 @@ export default function SignInPage() {
             disabled={pending}
             className="flex items-center justify-center gap-2 rounded bg-ink px-3 py-2 text-background disabled:opacity-50"
           >
-            {pending && <Spinner size="xs" className="border-background/40 border-t-background" />}
+            {pending && (
+              <Spinner
+                size="xs"
+                className="border-background/40 border-t-background"
+              />
+            )}
             Sign in
           </button>
         </form>

@@ -1,5 +1,5 @@
-import Skeleton from '@/components/ui/Skeleton';
-import MapLoadingOverlay from '@/components/map/MapLoadingOverlay';
+import Skeleton from '@components/ui/Skeleton';
+import MapLoadingOverlay from '@components/map/MapLoadingOverlay';
 
 export default function ReviewExplorerSkeleton() {
   return (

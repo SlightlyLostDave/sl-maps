@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 
-import DrawerShell from '@/components/ui/DrawerShell';
+import DrawerShell from '@components/ui/DrawerShell';
 import { useReviewQueue } from './ReviewQueueContext';
 
 export default function ReviewList() {

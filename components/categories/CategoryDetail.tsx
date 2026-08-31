@@ -3,9 +3,9 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
-} from '@/app/actions/categories';
-import SubmitButton from '@/components/ui/SubmitButton';
-import IconPicker from '@/components/categories/IconPicker';
+} from '@app/actions/categories';
+import SubmitButton from '@components/ui/SubmitButton';
+import IconPicker from '@components/categories/IconPicker';
 
 type CategoryDetailRow = {
   id: string;

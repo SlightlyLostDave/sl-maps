@@ -1,10 +1,10 @@
-import { Suspense } from "react";
-import MapView from "@/components/map/MapView";
-import Sidebar from "@/components/map/Sidebar";
-import DetailDrawer from "@/components/map/DetailDrawer";
-import MapExplorerSkeleton from "@/components/map/MapExplorerSkeleton";
-import { FilterTransitionProvider } from "@/components/map/FilterTransitionContext";
-import { MapControlsProvider } from "@/components/map/MapControlsContext";
+import { Suspense } from 'react';
+import MapView from '@components/map/MapView';
+import Sidebar from '@components/map/Sidebar';
+import DetailDrawer from '@components/map/DetailDrawer';
+import MapExplorerSkeleton from '@components/map/MapExplorerSkeleton';
+import { FilterTransitionProvider } from '@components/map/FilterTransitionContext';
+import { MapControlsProvider } from '@components/map/MapControlsContext';
 
 export default function MapExplorer() {
   return (

@@ -1,5 +1,5 @@
-import Link from "next/link";
-import Skeleton from "@/components/ui/Skeleton";
+import Link from 'next/link';
+import Skeleton from '@components/ui/Skeleton';
 
 export default function CategoriesLoading() {
   return (
@@ -30,7 +30,7 @@ export default function CategoriesLoading() {
                 <div
                   key={i}
                   className={`flex items-center justify-between gap-2 px-2 py-1.5 ${
-                    i % 3 === 2 ? "ml-6" : ""
+                    i % 3 === 2 ? 'ml-6' : ''
                   }`}
                 >
                   <div className="flex items-center gap-2">

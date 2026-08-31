@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import Spinner from "@/components/ui/Spinner";
-import { useCategoryTransition } from "./CategoryTransitionContext";
+import Spinner from '@components/ui/Spinner';
+import { useCategoryTransition } from './CategoryTransitionContext';
 
 export default function CategoryLoadingOverlay() {
   const { isPending } = useCategoryTransition();

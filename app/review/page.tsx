@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 
 import { createClient } from '@lib/supabase/server';
-import ReviewExplorer from '@/components/review/ReviewExplorer';
-import AppHeader from '@/components/ui/AppHeader';
+import ReviewExplorer from '@components/review/ReviewExplorer';
+import AppHeader from '@components/ui/AppHeader';
 
 async function firstUnsortedId(): Promise<string | null> {
   const supabase = await createClient();

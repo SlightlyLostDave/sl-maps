@@ -3,7 +3,7 @@
 import { type ReactNode } from 'react';
 
 import { useFilterParams } from './useFilterParams';
-import DrawerShell from '@/components/ui/DrawerShell';
+import DrawerShell from '@components/ui/DrawerShell';
 
 export default function SidebarShell({ children }: { children: ReactNode }) {
   const { activeFilterCount } = useFilterParams();

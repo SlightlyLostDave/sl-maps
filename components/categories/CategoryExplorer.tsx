@@ -1,5 +1,5 @@
-import CategoryList from "@/components/categories/CategoryList";
-import CategoryDetail from "@/components/categories/CategoryDetail";
+import CategoryList from '@components/categories/CategoryList';
+import CategoryDetail from '@components/categories/CategoryDetail';
 
 export default function CategoryExplorer({
   selectedId,

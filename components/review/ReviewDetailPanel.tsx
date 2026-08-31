@@ -4,14 +4,14 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 import { createClient } from '@lib/supabase/client';
-import Skeleton from '@/components/ui/Skeleton';
-import BottomSheet from '@/components/ui/BottomSheet';
-import PlacemarkForm from '@/components/map/PlacemarkForm';
-import { useMapControls } from '@/components/map/MapControlsContext';
+import Skeleton from '@components/ui/Skeleton';
+import BottomSheet from '@components/ui/BottomSheet';
+import PlacemarkForm from '@components/map/PlacemarkForm';
+import { useMapControls } from '@components/map/MapControlsContext';
 import {
   detailsToFormValues,
   type PlacemarkDetails,
-} from '@/components/map/placemarkDetails';
+} from '@components/map/placemarkDetails';
 import { useReviewQueue } from './ReviewQueueContext';
 
 export default function ReviewDetailPanel() {

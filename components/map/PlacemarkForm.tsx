@@ -13,8 +13,8 @@ import {
   createPlacemark,
   savePlacemark,
   deletePlacemark,
-} from '@/app/actions/placemarks';
-import { createCategoryQuick } from '@/app/actions/categories';
+} from '@app/actions/placemarks';
+import { createCategoryQuick } from '@app/actions/categories';
 import { useMapControls } from './MapControlsContext';
 import TagInput, { type SelectedTag } from './TagInput';
 import LogVisitModal from './LogVisitModal';

@@ -48,7 +48,7 @@ export default function DrawerShell({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex min-h-0 shrink-0 flex-col gap-4 border-r border-line bg-bg-raised p-5 transition-transform duration-200 md:static md:z-auto md:h-full md:translate-x-0 ${widthClassName} ${
+        className={`fixed inset-y-0 left-0 z-40 flex min-h-0 shrink-0 overflow-auto flex-col gap-4 border-r border-line bg-bg-raised p-5 transition-transform duration-200 md:static md:z-auto md:h-full md:translate-x-0 ${widthClassName} ${
           open ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

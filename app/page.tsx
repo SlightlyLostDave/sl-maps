@@ -1,7 +1,7 @@
-import { signOut } from '@/app/actions/auth';
+import { signOut } from '@app/actions/auth';
 import { createClient } from '@lib/supabase/server';
-import MapExplorer from '@/components/map/MapExplorer';
-import AppHeader from '@/components/ui/AppHeader';
+import MapExplorer from '@components/map/MapExplorer';
+import AppHeader from '@components/ui/AppHeader';
 
 export default async function Home() {
   const supabase = await createClient();

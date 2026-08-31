@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import ReviewExplorerSkeleton from '@/components/review/ReviewExplorerSkeleton';
+import ReviewExplorerSkeleton from '@components/review/ReviewExplorerSkeleton';
 
 export default function ReviewLoading() {
   return (

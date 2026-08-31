@@ -1,7 +1,7 @@
-import CategoryExplorer from '@/components/categories/CategoryExplorer';
-import CategoryLoadingOverlay from '@/components/categories/CategoryLoadingOverlay';
-import { CategoryTransitionProvider } from '@/components/categories/CategoryTransitionContext';
-import AppHeader from '@/components/ui/AppHeader';
+import CategoryExplorer from '@components/categories/CategoryExplorer';
+import CategoryLoadingOverlay from '@components/categories/CategoryLoadingOverlay';
+import { CategoryTransitionProvider } from '@components/categories/CategoryTransitionContext';
+import AppHeader from '@components/ui/AppHeader';
 
 export default async function CategoriesPage({
   searchParams,

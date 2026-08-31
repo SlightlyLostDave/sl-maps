@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
-import MapView from '@/components/map/MapView';
-import { FilterTransitionProvider } from '@/components/map/FilterTransitionContext';
-import { MapControlsProvider } from '@/components/map/MapControlsContext';
+import MapView from '@components/map/MapView';
+import { FilterTransitionProvider } from '@components/map/FilterTransitionContext';
+import { MapControlsProvider } from '@components/map/MapControlsContext';
 import ReviewList from './ReviewList';
 import ReviewDetailPanel from './ReviewDetailPanel';
 import { ReviewQueueProvider } from './ReviewQueueContext';

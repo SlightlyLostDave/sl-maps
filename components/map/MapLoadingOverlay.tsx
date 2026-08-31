@@ -1,4 +1,4 @@
-import Spinner from '@/components/ui/Spinner';
+import Spinner from '@components/ui/Spinner';
 
 export default function MapLoadingOverlay({ dim = false }: { dim?: boolean }) {
   return (
