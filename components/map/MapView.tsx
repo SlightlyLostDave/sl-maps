@@ -30,6 +30,7 @@ import BasemapSwitcher from './BasemapSwitcher';
 import PlacingCrosshair from './PlacingCrosshair';
 import { useFilterTransition } from './FilterTransitionContext';
 import { useMapControls } from './MapControlsContext';
+import { useSearchResults } from './SearchResultsContext';
 
 const SOURCE_ID = 'placemarks';
 const CLUSTER_HALO_LAYER = 'placemarks-cluster-halo';
@@ -58,6 +59,8 @@ type PlacemarkCollection = GeoJSON.FeatureCollection<
 type Filters = {
   categoryIds: string[] | null;
   visited: boolean | null;
+  query: string | null;
+  near: { lat: number; lon: number } | null;
 };
 
 const DEFAULT_CENTER: [number, number] = [-80.5, 44.5];
@@ -109,7 +112,17 @@ function parseFilters(params: URLSearchParams): Filters {
   const visited =
     visitedParam === '1' ? true : visitedParam === '0' ? false : null;
 
-  return { categoryIds, visited };
+  const query = params.get('q');
+  const nearParam = params.get('near');
+  const near = (() => {
+    if (!nearParam) return null;
+    const [latStr, lonStr] = nearParam.split(',');
+    const lat = Number(latStr);
+    const lon = Number(lonStr);
+    return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
+  })();
+
+  return { categoryIds, visited, query, near };
 }
 
 // The QGIS import backlog (sql/0001_placemarks_needs_review.sql) left some
@@ -123,6 +136,48 @@ function toPointGeometry(geometry: GeoJSON.Geometry): GeoJSON.Geometry {
     return { type: 'Point', coordinates: geometry.coordinates[0] };
   }
   return geometry;
+}
+
+// Shared by the bbox-driven refresh() and the search-results effect: resolve
+// each feature's pin icon (falling back to the generic pin if the
+// category's hasn't registered yet) and coerce stray MultiPoint geometry to
+// Point (see toPointGeometry above).
+function toRenderableFeatures(
+  map: mapboxgl.Map,
+  collection: PlacemarkCollection,
+  visitedFilter: boolean | null,
+): PlacemarkFeature[] {
+  return collection.features
+    .filter(
+      (feature) =>
+        visitedFilter === null || feature.properties.visited === visitedFilter,
+    )
+    .map((feature) => {
+      const pinName = pinIconName(
+        feature.properties.category_id,
+        feature.properties.visited,
+      );
+      const icon_image = map.hasImage(pinName)
+        ? pinName
+        : feature.properties.visited
+          ? FALLBACK_PIN_VISITED_NAME
+          : FALLBACK_PIN_NAME;
+      return {
+        ...feature,
+        geometry: toPointGeometry(feature.geometry),
+        // placemarks_geojson/placemarks_search return id inside
+        // `properties`, not as a top-level GeoJSON feature id — and
+        // properties is what supercluster preserves once features get
+        // clustered, so the click handler reads id from there. icon_image
+        // is similarly precomputed here (rather than as a mapbox style
+        // expression) since a category's pin image may not be registered
+        // yet when this runs.
+        properties: {
+          ...feature.properties,
+          icon_image,
+        },
+      };
+    });
 }
 
 function cssVar(name: string, fallback: string) {
@@ -223,7 +278,10 @@ export default function MapView() {
   const filtersRef = useRef<Filters>({
     categoryIds: null,
     visited: null,
+    query: null,
+    near: null,
   });
+  const searchActiveRef = useRef(false);
   const refreshRef = useRef<() => void>(() => {});
   const moveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const requestIdRef = useRef(0);
@@ -244,12 +302,18 @@ export default function MapView() {
   const searchParams = useSearchParams();
   const filters = parseFilters(searchParams);
   const filtersKey = JSON.stringify(filters);
-  const { isPending: filtersPending } = useFilterTransition();
-  const mapControls = useMapControls();
   // MapView fully unmounts/remounts between routes (they're separate
   // pages), so this is stable for the component's lifetime — same as
   // basemapId's "read once at mount" treatment.
   const isReviewQueue = usePathname() === '/review';
+  // The review queue has its own filter surface (needs_review scoping) and
+  // no search UI of its own — ignore any q/near params so a stray URL
+  // param can't switch its map into global search rendering.
+  const searchActive =
+    !isReviewQueue && (Boolean(filters.query?.trim()) || filters.near != null);
+  const { isPending: filtersPending } = useFilterTransition();
+  const mapControls = useMapControls();
+  const { collection: searchCollection } = useSearchResults();
 
   const isCreating = searchParams.get('id') === 'new';
   const draftLat = searchParams.get('lat');
@@ -416,6 +480,10 @@ export default function MapView() {
         // false and silently skip the very first fetch (placemarks would
         // then only appear after a pan triggers moveend).
         if (!map.getSource(SOURCE_ID)) return;
+        // Search results aren't viewport-bound — the search-results effect
+        // owns rendering while a search is active, and calling this bbox
+        // fetch too would just overwrite it with an unrelated pin set.
+        if (searchActiveRef.current) return;
         const bounds = map.getBounds();
         if (!bounds) return;
         const { categoryIds } = filtersRef.current;
@@ -447,43 +515,7 @@ export default function MapView() {
 
         const collection = data as PlacemarkCollection;
         const { visited } = filtersRef.current;
-        const features = collection.features
-          .filter((feature) => {
-            if (visited !== null && feature.properties.visited !== visited)
-              return false;
-            return true;
-          })
-          .map((feature) => {
-            const pinName = pinIconName(
-              feature.properties.category_id,
-              feature.properties.visited,
-            );
-            // The category's `icon` name might not resolve to a real
-            // HugeIcons asset (fetch/rasterize can fail — e.g. stale/invalid
-            // data), or the category's pin may not have registered yet; fall
-            // back to the generic pin (still visited-aware) rather than
-            // pointing icon-image at a name mapbox has never seen.
-            const icon_image = map.hasImage(pinName)
-              ? pinName
-              : feature.properties.visited
-                ? FALLBACK_PIN_VISITED_NAME
-                : FALLBACK_PIN_NAME;
-            return {
-              ...feature,
-              geometry: toPointGeometry(feature.geometry),
-              // placemarks_geojson returns id inside `properties`, not as a
-              // top-level GeoJSON feature id — and properties is what
-              // supercluster preserves once features get clustered, so the
-              // click handler reads id from there. icon_image is similarly
-              // precomputed here (rather than as a mapbox style expression)
-              // since a category's pin image may not be registered yet when
-              // this runs.
-              properties: {
-                ...feature.properties,
-                icon_image,
-              },
-            };
-          });
+        const features = toRenderableFeatures(map, collection, visited);
 
         const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
         source.setData({ type: 'FeatureCollection', features });
@@ -799,9 +831,47 @@ export default function MapView() {
   // cycle, not because this effect can't read `filters` directly.
   useEffect(() => {
     filtersRef.current = filters;
-    refreshRef.current();
+    searchActiveRef.current = searchActive;
+    // Only resumes the bbox-driven refresh when no search is active — while
+    // a search is active, the effect below owns rendering from
+    // searchCollection instead.
+    if (!searchActive) refreshRef.current();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtersKey]);
+  }, [filtersKey, searchActive]);
+
+  // Renders search results (instead of the viewport bbox) while a search is
+  // active: replaces the map source's data with just the matches (pins for
+  // non-matches simply aren't in the collection — consistent with how
+  // category filters already hide non-matching pins) and fits the camera to
+  // them.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded || !map.getSource(SOURCE_ID)) return;
+    if (!searchActive) return;
+
+    const { visited, near } = filtersRef.current;
+    const collection: PlacemarkCollection = searchCollection ?? {
+      type: 'FeatureCollection',
+      features: [],
+    };
+    const features = toRenderableFeatures(map, collection, visited);
+    const source = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource;
+    source.setData({ type: 'FeatureCollection', features });
+
+    if (features.length > 0) {
+      const bounds = new mapboxgl.LngLatBounds();
+      for (const f of features) {
+        if (f.geometry.type === 'Point') {
+          bounds.extend(f.geometry.coordinates as [number, number]);
+        }
+      }
+      map.fitBounds(bounds, { padding: 64, maxZoom: 14, duration: 600 });
+    } else if (near) {
+      // No matches — still show the searched area rather than leaving the
+      // camera wherever it happened to be.
+      map.easeTo({ center: [near.lon, near.lat], zoom: 11, duration: 600 });
+    }
+  }, [searchActive, searchCollection, mapLoaded]);
 
   return (
     <>

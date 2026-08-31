@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import MapView from '@components/map/MapView';
 import { FilterTransitionProvider } from '@components/map/FilterTransitionContext';
 import { MapControlsProvider } from '@components/map/MapControlsContext';
+import { SearchResultsProvider } from '@components/map/SearchResultsContext';
 import ReviewList from './ReviewList';
 import ReviewDetailPanel from './ReviewDetailPanel';
 import { ReviewQueueProvider } from './ReviewQueueContext';
@@ -17,15 +18,17 @@ export default function ReviewExplorer() {
       <Suspense fallback={<ReviewExplorerSkeleton />}>
         <FilterTransitionProvider>
           <MapControlsProvider>
-            <ReviewQueueProvider>
-              <ReviewList />
-              <div className="flex min-w-0 flex-1">
-                <div className="relative min-w-0 flex-1">
-                  <MapView />
+            <SearchResultsProvider>
+              <ReviewQueueProvider>
+                <ReviewList />
+                <div className="flex min-w-0 flex-1">
+                  <div className="relative min-w-0 flex-1">
+                    <MapView />
+                  </div>
+                  <ReviewDetailPanel />
                 </div>
-                <ReviewDetailPanel />
-              </div>
-            </ReviewQueueProvider>
+              </ReviewQueueProvider>
+            </SearchResultsProvider>
           </MapControlsProvider>
         </FilterTransitionProvider>
       </Suspense>

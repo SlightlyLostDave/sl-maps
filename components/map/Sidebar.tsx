@@ -1,7 +1,8 @@
 import { createClient } from '@lib/supabase/server';
 import SidebarShell from './SidebarShell';
 import FilterPanel, { type CategoryItem } from './FilterPanel';
-import CoordinateSearch from './CoordinateSearch';
+import SearchBox from './SearchBox';
+import SearchResultsList from './SearchResultsList';
 
 const PAGE_SIZE = 1000;
 
@@ -81,7 +82,8 @@ export default async function Sidebar() {
 
   return (
     <SidebarShell>
-      <CoordinateSearch />
+      <SearchBox />
+      <SearchResultsList />
       <FilterPanel
         categories={items}
         totalCount={aggregates.totalCount}

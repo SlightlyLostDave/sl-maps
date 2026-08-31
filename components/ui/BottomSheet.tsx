@@ -37,7 +37,7 @@ export default function BottomSheet({
         aria-hidden="true"
       />
       <div
-        className={`relative z-10 max-h-[75vh] w-full overflow-y-auto rounded-t-xl border border-line-strong bg-bg-raised shadow-(--shadow) md:max-h-full md:h-full md:w-full md:rounded-none md:border-y-0 md:border-r-0 md:border-l ${widthClassName}`}
+        className={`relative z-10 max-h-[75vh] w-full overflow-y-auto rounded-t-xl border border-line-strong bg-bg-raised shadow-(--shadow) md:max-h-full md:h-full md:rounded-none md:border-y-0 md:border-r-0 md:border-l ${widthClassName}`}
       >
         <button
           type="button"
