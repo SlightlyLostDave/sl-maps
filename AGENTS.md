@@ -12,6 +12,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 A personal field-mapping tool for tracking real-world "placemarks" (dive sites, urbex spots, rockhounding, heritage sites, etc.) with categories, tags, visits, and photo media, backed by PostGIS geometry. See `sl-maps-schema-design.md` for the full data model design, and `sl-maps.html` / `sl-maps-style-guide.html` for the product plan and visual style guide (dark "Crimson & Patina field manual" theme — see the CSS token comment header in `app/globals.css`).
 
+Original plan, style guide, and database schema can be found in `docs/`
+The database setup was covered in `C:\Users\dave\Repos\sl-maps-supabase`
+
 ### Stack
 
 - Next.js 16.3.0 (App Router), React 19.2.8, TypeScript

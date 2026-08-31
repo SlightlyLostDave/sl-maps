@@ -5,16 +5,16 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
 import { createClient } from '@/lib/supabase/client';
 
 // At 22k+ unsorted rows, rendering the whole backlog as DOM list items isn't
-// viable — this only loads the front of the queue. Real pagination or
-// virtualization is follow-up work, matching ReviewList's prior server-side
-// cap.
-const LIST_PAGE_SIZE = 200;
+// viable, so the queue is paginated server-side in PAGE_SIZE chunks ordered
+// by created_at.
+const PAGE_SIZE = 100;
 
 export type ReviewQueueItem = {
   id: string;
@@ -33,8 +33,13 @@ type ReviewQueueValue = {
   loading: boolean;
   totalCount: number;
   reviewedCount: number;
+  page: number;
+  pageCount: number;
+  goToPage: (n: number) => void;
+  nextPage: () => void;
+  prevPage: () => void;
   refresh: () => void;
-  nextIdAfter: (currentId: string) => string | null;
+  advanceFrom: (currentId: string) => Promise<string | null>;
 };
 
 const ReviewQueueContext = createContext<ReviewQueueValue | null>(null);
@@ -44,68 +49,103 @@ export function ReviewQueueProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [reviewedCount, setReviewedCount] = useState(0);
+  const [remainingCount, setRemainingCount] = useState(0);
+  const [page, setPage] = useState(0);
+  const pageRef = useRef(0);
   const [refreshToken, setRefreshToken] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
+  // Derived from remainingCount, which is the same "needs_review=true,
+  // not deleted" universe being paginated. This can shrink mid-session as
+  // items get reviewed and drop out of that set — same property the old
+  // single-batch queue already had, just now visible as a shrinking page
+  // count instead of a shrinking list.
+  const pageCount = Math.max(1, Math.ceil(remainingCount / PAGE_SIZE));
+
+  const loadPage = useCallback(async (targetPage: number) => {
     const supabase = createClient();
+    const [rows, total, remaining] = await Promise.all([
+      supabase
+        .from('placemarks')
+        .select('id, name, categories(slug)')
+        .eq('needs_review', true)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: true })
+        .range(targetPage * PAGE_SIZE, targetPage * PAGE_SIZE + PAGE_SIZE - 1)
+        .returns<RawRow[]>(),
+      supabase
+        .from('placemarks')
+        .select('id', { count: 'exact', head: true })
+        .is('deleted_at', null),
+      supabase
+        .from('placemarks')
+        .select('id', { count: 'exact', head: true })
+        .eq('needs_review', true)
+        .is('deleted_at', null),
+    ]);
 
-    async function load() {
-      setLoading(true);
-      const [rows, total, remaining] = await Promise.all([
-        supabase
-          .from('placemarks')
-          .select('id, name, categories(slug)')
-          .eq('needs_review', true)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: true })
-          .range(0, LIST_PAGE_SIZE - 1)
-          .returns<RawRow[]>(),
-        supabase
-          .from('placemarks')
-          .select('id', { count: 'exact', head: true })
-          .is('deleted_at', null),
-        supabase
-          .from('placemarks')
-          .select('id', { count: 'exact', head: true })
-          .eq('needs_review', true)
-          .is('deleted_at', null),
-      ]);
-
-      if (cancelled) return;
-      if (!rows.error && rows.data) {
-        setItems(
-          rows.data.map((row) => ({
+    const mapped =
+      !rows.error && rows.data
+        ? rows.data.map((row) => ({
             id: row.id,
             name: row.name,
             categorySlug: row.categories?.slug ?? null,
-          })),
-        );
-      }
-      const totalN = total.count ?? 0;
-      const remainingN = remaining.count ?? 0;
-      setTotalCount(totalN);
-      setReviewedCount(totalN - remainingN);
-      setLoading(false);
-    }
+          }))
+        : [];
+    const totalN = total.count ?? 0;
+    const remainingN = remaining.count ?? 0;
 
-    load();
+    setItems(mapped);
+    setTotalCount(totalN);
+    setReviewedCount(totalN - remainingN);
+    setRemainingCount(remainingN);
+    setPage(targetPage);
+    pageRef.current = targetPage;
+    return mapped;
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      setLoading(true);
+      await loadPage(pageRef.current);
+      if (!cancelled) setLoading(false);
+    }
+    run();
     return () => {
       cancelled = true;
     };
+    // refreshToken is the only intentional trigger here; loadPage always
+    // reloads whatever page pageRef currently points at.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken]);
 
   const refresh = useCallback(() => setRefreshToken((n) => n + 1), []);
 
-  const nextIdAfter = useCallback(
-    (currentId: string) => {
+  const goToPage = useCallback(
+    (n: number) => {
+      const clamped = Math.max(0, Math.min(n, pageCount - 1));
+      if (clamped === pageRef.current) return;
+      setLoading(true);
+      loadPage(clamped).finally(() => setLoading(false));
+    },
+    [loadPage, pageCount],
+  );
+
+  const nextPage = useCallback(() => goToPage(page + 1), [goToPage, page]);
+  const prevPage = useCallback(() => goToPage(page - 1), [goToPage, page]);
+
+  const advanceFrom = useCallback(
+    async (currentId: string): Promise<string | null> => {
       if (items.length === 0) return null;
       const idx = items.findIndex((item) => item.id === currentId);
       if (idx === -1) return items[0].id;
-      if (items.length === 1) return null;
-      return items[(idx + 1) % items.length].id;
+      if (idx < items.length - 1) return items[idx + 1].id;
+
+      const targetPage = page + 1 < pageCount ? page + 1 : 0;
+      const nextItems = await loadPage(targetPage);
+      return nextItems.length > 0 ? nextItems[0].id : null;
     },
-    [items],
+    [items, page, pageCount, loadPage],
   );
 
   const value: ReviewQueueValue = {
@@ -113,8 +153,13 @@ export function ReviewQueueProvider({ children }: { children: ReactNode }) {
     loading,
     totalCount,
     reviewedCount,
+    page,
+    pageCount,
+    goToPage,
+    nextPage,
+    prevPage,
     refresh,
-    nextIdAfter,
+    advanceFrom,
   };
 
   return (

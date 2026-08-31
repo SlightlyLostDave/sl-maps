@@ -6,7 +6,8 @@ import { useReviewQueue } from './ReviewQueueContext';
 export default function ReviewList() {
   const searchParams = useSearchParams();
   const selectedId = searchParams.get('id');
-  const { items, loading, totalCount, reviewedCount } = useReviewQueue();
+  const { items, loading, totalCount, reviewedCount, page, pageCount, nextPage, prevPage } =
+    useReviewQueue();
 
   function select(id: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -53,6 +54,29 @@ export default function ReviewList() {
           </li>
         )}
       </ul>
+      {pageCount > 1 && (
+        <div className="flex items-center justify-between border-t border-line pt-3">
+          <button
+            type="button"
+            onClick={prevPage}
+            disabled={page === 0}
+            className="rounded-md px-2 py-1 text-sm text-ink-dim transition-opacity hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Prev
+          </button>
+          <span className="font-mono text-xs text-ink-faint">
+            Page {page + 1} of {pageCount}
+          </span>
+          <button
+            type="button"
+            onClick={nextPage}
+            disabled={page >= pageCount - 1}
+            className="rounded-md px-2 py-1 text-sm text-ink-dim transition-opacity hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

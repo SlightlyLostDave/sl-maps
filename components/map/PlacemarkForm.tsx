@@ -6,11 +6,11 @@ import {
   createPlacemark,
   savePlacemark,
   deletePlacemark,
-  logVisit,
 } from '@/app/actions/placemarks';
 import { createCategoryQuick } from '@/app/actions/categories';
 import { useMapControls } from './MapControlsContext';
 import TagInput, { type SelectedTag } from './TagInput';
+import LogVisitModal from './LogVisitModal';
 
 type CategoryOption = { id: string; name: string; color: string };
 
@@ -23,7 +23,7 @@ export type PlacemarkFormValues = {
   tags: SelectedTag[];
 };
 
-const inputClass =
+export const inputClass =
   'rounded-md border border-line bg-ground-2 px-3 py-2 text-sm text-ink';
 
 const emptyValues: PlacemarkFormValues = {
@@ -81,6 +81,7 @@ export default function PlacemarkForm({
   const [isPending, startTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [logVisitOpen, setLogVisitOpen] = useState(false);
   const { refresh, flyTo } = useMapControls();
 
   useEffect(() => {
@@ -192,170 +193,171 @@ export default function PlacemarkForm({
     });
   }
 
-  function handleLogVisit() {
-    if (!placemarkId) return;
-    startTransition(async () => {
-      const result = await logVisit(
-        placemarkId,
-        new Date().toISOString().slice(0, 10),
-      );
-      if (!('error' in result)) {
-        setSavedNote('Visit logged');
-        refresh();
-        setTimeout(() => setSavedNote(null), 1500);
-      }
-    });
-  }
-
   return (
-    <form onSubmit={submit} className="flex flex-col gap-4">
-      {error && (
-        <p className="rounded-md border border-crimson-deep bg-crimson-wash px-3 py-2 text-sm text-crimson-lift">
-          {error}
-        </p>
-      )}
+    <>
+      <form onSubmit={submit} className="flex flex-col gap-4">
+        {error && (
+          <p className="rounded-md border border-crimson-deep bg-crimson-wash px-3 py-2 text-sm text-crimson-lift">
+            {error}
+          </p>
+        )}
 
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-ink-dim">Name</span>
-        <input
-          type="text"
-          required
-          value={values.name}
-          onChange={(e) => update('name', e.target.value)}
-          className={inputClass}
-        />
-      </label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-ink-dim">Name</span>
+          <input
+            type="text"
+            required
+            value={values.name}
+            onChange={(e) => update('name', e.target.value)}
+            className={inputClass}
+          />
+        </label>
 
-      <div className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-ink-dim">Category</span>
-        <select
-          value={values.categoryId}
-          onChange={(e) => update('categoryId', e.target.value)}
-          className={inputClass}
-        >
-          <option value="">Choose a category…</option>
-          {[...categories]
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-ink-dim">Category</span>
+          <select
+            value={values.categoryId}
+            onChange={(e) => update('categoryId', e.target.value)}
+            className={inputClass}
+          >
+            <option value="">Choose a category…</option>
+            {[...categories]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+          </select>
+          {!showNewCategory ? (
+            <button
+              type="button"
+              onClick={() => setShowNewCategory(true)}
+              className="self-start font-mono text-xs text-crimson-lift"
+            >
+              + New category
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                placeholder="Category name"
+                className={`${inputClass} flex-1`}
+              />
+              <button
+                type="button"
+                onClick={handleCreateCategory}
+                className="rounded-md border border-line px-3 py-2 text-sm text-ink-dim hover:text-ink"
+              >
+                Add
+              </button>
+            </div>
+          )}
+        </div>
+
+        <label className="flex flex-col gap-1">
+          <span className="flex items-center justify-between text-xs font-medium text-ink-dim">
+            Description
+            {savedNote && (
+              <span className="text-crimson-lift">{savedNote}</span>
+            )}
+          </span>
+          <textarea
+            value={values.description}
+            onChange={(e) => update('description', e.target.value)}
+            onBlur={handleDescriptionBlur}
+            rows={5}
+            className={inputClass}
+          />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-ink-dim">Priority</span>
+          <select
+            value={values.priority ?? ''}
+            onChange={(e) =>
+              update('priority', e.target.value ? Number(e.target.value) : null)
+            }
+            className={inputClass}
+          >
+            <option value="">None</option>
+            {[1, 2, 3, 4, 5].map((p) => (
+              <option key={p} value={p}>
+                {p}
               </option>
             ))}
-        </select>
-        {!showNewCategory ? (
+          </select>
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-ink-dim">External URL</span>
+          <input
+            type="url"
+            value={values.externalUrl}
+            onChange={(e) => update('externalUrl', e.target.value)}
+            className={inputClass}
+          />
+        </label>
+
+        <TagInput
+          selected={values.tags}
+          onChange={(tags) => update('tags', tags)}
+        />
+
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            disabled={isPending}
+            className="inline-flex items-center gap-2 rounded-md bg-crimson px-4 py-2 text-sm font-medium text-on-crimson transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isPending
+              ? 'Saving…'
+              : (submitLabel ??
+                (mode === 'create' ? 'Create placemark' : 'Save changes'))}
+          </button>
           <button
             type="button"
-            onClick={() => setShowNewCategory(true)}
-            className="self-start font-mono text-xs text-crimson-lift"
+            onClick={onCancel}
+            className="rounded-md border border-line px-4 py-2 text-sm text-ink-dim"
           >
-            + New category
+            Cancel
           </button>
-        ) : (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              placeholder="Category name"
-              className={`${inputClass} flex-1`}
-            />
-            <button
-              type="button"
-              onClick={handleCreateCategory}
-              className="rounded-md border border-line px-3 py-2 text-sm text-ink-dim hover:text-ink"
-            >
-              Add
-            </button>
-          </div>
-        )}
-      </div>
 
-      <label className="flex flex-col gap-1">
-        <span className="flex items-center justify-between text-xs font-medium text-ink-dim">
-          Description
-          {savedNote && <span className="text-crimson-lift">{savedNote}</span>}
-        </span>
-        <textarea
-          value={values.description}
-          onChange={(e) => update('description', e.target.value)}
-          onBlur={handleDescriptionBlur}
-          rows={5}
-          className={inputClass}
+          {mode === 'edit' && (
+            <>
+              <button
+                type="button"
+                onClick={() => setLogVisitOpen(true)}
+                className="rounded-md border border-line px-4 py-2 text-sm text-ink-dim hover:text-ink"
+              >
+                Log a visit
+              </button>
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="ml-auto rounded-md border border-crimson-deep px-4 py-2 text-sm text-crimson-lift disabled:opacity-50"
+              >
+                {confirmingDelete ? 'Confirm delete' : 'Delete'}
+              </button>
+            </>
+          )}
+        </div>
+      </form>
+      {mode === 'edit' && placemarkId && (
+        <LogVisitModal
+          open={logVisitOpen}
+          placemarkId={placemarkId}
+          onClose={() => setLogVisitOpen(false)}
+          onLogged={() => {
+            setSavedNote('Visit logged');
+            refresh();
+            setTimeout(() => setSavedNote(null), 1500);
+          }}
         />
-      </label>
-
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-ink-dim">Priority</span>
-        <select
-          value={values.priority ?? ''}
-          onChange={(e) =>
-            update('priority', e.target.value ? Number(e.target.value) : null)
-          }
-          className={inputClass}
-        >
-          <option value="">None</option>
-          {[1, 2, 3, 4, 5].map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-ink-dim">External URL</span>
-        <input
-          type="url"
-          value={values.externalUrl}
-          onChange={(e) => update('externalUrl', e.target.value)}
-          className={inputClass}
-        />
-      </label>
-
-      <TagInput
-        selected={values.tags}
-        onChange={(tags) => update('tags', tags)}
-      />
-
-      <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="submit"
-          disabled={isPending}
-          className="inline-flex items-center gap-2 rounded-md bg-crimson px-4 py-2 text-sm font-medium text-on-crimson transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isPending
-            ? 'Saving…'
-            : (submitLabel ??
-              (mode === 'create' ? 'Create placemark' : 'Save changes'))}
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="rounded-md border border-line px-4 py-2 text-sm text-ink-dim"
-        >
-          Cancel
-        </button>
-
-        {mode === 'edit' && (
-          <>
-            <button
-              type="button"
-              onClick={handleLogVisit}
-              className="rounded-md border border-line px-4 py-2 text-sm text-ink-dim hover:text-ink"
-            >
-              Log a visit today
-            </button>
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="ml-auto rounded-md border border-crimson-deep px-4 py-2 text-sm text-crimson-lift disabled:opacity-50"
-            >
-              {confirmingDelete ? 'Confirm delete' : 'Delete'}
-            </button>
-          </>
-        )}
-      </div>
-    </form>
+      )}
+    </>
   );
 }

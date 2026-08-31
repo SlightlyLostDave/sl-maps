@@ -119,7 +119,7 @@ export default async function CategoryList({
           + New category
         </CategoryNavLink>
       </div>
-      <ul className="themed-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden">
+      <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden">
         {topLevel.map((category) => (
           <li key={category.id}>
             <ul className="flex flex-col gap-1">

@@ -476,7 +476,7 @@ export default function MapView() {
           type: 'geojson',
           data: { type: 'FeatureCollection', features: [] },
           cluster: true,
-          clusterMaxZoom: 11,
+          clusterMaxZoom: 10,
           clusterRadius: 25,
         });
 

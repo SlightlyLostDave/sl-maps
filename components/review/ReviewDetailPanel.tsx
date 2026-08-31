@@ -15,7 +15,7 @@ import { useReviewQueue } from './ReviewQueueContext';
 export default function ReviewDetailPanel() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
-  const { items, refresh, nextIdAfter } = useReviewQueue();
+  const { items, refresh, advanceFrom } = useReviewQueue();
   const mapControls = useMapControls();
 
   const [result, setResult] = useState<{
@@ -50,8 +50,8 @@ export default function ReviewDetailPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [details?.id]);
 
-  function advance(currentId: string) {
-    const next = nextIdAfter(currentId);
+  async function advance(currentId: string) {
+    const next = await advanceFrom(currentId);
     refresh();
     const params = new URLSearchParams(searchParams.toString());
     if (next) params.set('id', next);

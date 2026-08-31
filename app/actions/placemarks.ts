@@ -219,7 +219,8 @@ export async function deletePlacemark(
 // update.
 export async function logVisit(
   placemarkId: string,
-  visitedOn: string,
+  visitedOn: string | null,
+  notes: string | null,
 ): Promise<{ ok: true } | { error: string }> {
   const supabase = await createClient();
   const {
@@ -231,6 +232,7 @@ export async function logVisit(
     placemark_id: placemarkId,
     owner_id: user.id,
     visited_on: visitedOn,
+    notes: notes,
   });
   if (error) return { error: error.message };
 
