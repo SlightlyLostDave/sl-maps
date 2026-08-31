@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useState, useTransition, type FormEvent } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+} from 'react';
+
 import { createClient } from '@lib/supabase/client';
 import {
   createPlacemark,
@@ -24,7 +31,7 @@ export type PlacemarkFormValues = {
 };
 
 export const inputClass =
-  'rounded-md border border-line bg-ground-2 px-3 py-2 text-sm text-ink';
+  'rounded-md border border-line bg-ground-2 px-3 py-2 text-base md:text-sm text-ink';
 
 const emptyValues: PlacemarkFormValues = {
   name: '',
@@ -83,6 +90,11 @@ export default function PlacemarkForm({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [logVisitOpen, setLogVisitOpen] = useState(false);
   const { refresh, flyTo } = useMapControls();
+  const newCategoryInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showNewCategory) newCategoryInputRef.current?.focus();
+  }, [showNewCategory]);
 
   useEffect(() => {
     let cancelled = false;
@@ -193,6 +205,61 @@ export default function PlacemarkForm({
     });
   }
 
+  const optionalFields = (
+    <>
+      <label className="flex flex-col gap-1">
+        <span className="flex items-center justify-between text-xs font-medium text-ink-dim">
+          Description
+          {savedNote && <span className="text-crimson-lift">{savedNote}</span>}
+        </span>
+        <textarea
+          value={values.description}
+          onChange={(e) => update('description', e.target.value)}
+          onBlur={handleDescriptionBlur}
+          rows={3}
+          className={`${inputClass} min-h-24 md:min-h-32 resize-y`}
+        />
+      </label>
+
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-ink-dim">Priority</span>
+        <select
+          value={values.priority ?? ''}
+          onChange={(e) =>
+            update('priority', e.target.value ? Number(e.target.value) : null)
+          }
+          className={inputClass}
+        >
+          <option value="">None</option>
+          {[1, 2, 3, 4, 5].map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-medium text-ink-dim">External URL</span>
+        <input
+          type="url"
+          value={values.externalUrl}
+          onChange={(e) => update('externalUrl', e.target.value)}
+          inputMode="url"
+          autoComplete="url"
+          autoCapitalize="none"
+          autoCorrect="off"
+          className={inputClass}
+        />
+      </label>
+
+      <TagInput
+        selected={values.tags}
+        onChange={(tags) => update('tags', tags)}
+      />
+    </>
+  );
+
   return (
     <>
       <form onSubmit={submit} className="flex flex-col gap-4">
@@ -240,10 +307,18 @@ export default function PlacemarkForm({
           ) : (
             <div className="flex gap-2">
               <input
+                ref={newCategoryInputRef}
                 type="text"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleCreateCategory();
+                  }
+                }}
                 placeholder="Category name"
+                autoComplete="off"
                 className={`${inputClass} flex-1`}
               />
               <button
@@ -253,64 +328,39 @@ export default function PlacemarkForm({
               >
                 Add
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowNewCategory(false);
+                  setNewCategoryName('');
+                }}
+                aria-label="Cancel new category"
+                className="rounded-md border border-line px-3 py-2 text-sm text-ink-dim hover:text-ink"
+              >
+                ×
+              </button>
             </div>
           )}
         </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="flex items-center justify-between text-xs font-medium text-ink-dim">
-            Description
-            {savedNote && (
-              <span className="text-crimson-lift">{savedNote}</span>
-            )}
-          </span>
-          <textarea
-            value={values.description}
-            onChange={(e) => update('description', e.target.value)}
-            onBlur={handleDescriptionBlur}
-            rows={5}
-            className={inputClass}
-          />
-        </label>
+        {mode === 'create' ? (
+          <details className="rounded-md border border-line">
+            <summary className="cursor-pointer px-3 py-2 text-xs font-medium text-ink-dim">
+              More details (optional)
+            </summary>
+            <div className="flex flex-col gap-4 border-t border-line p-3">
+              {optionalFields}
+            </div>
+          </details>
+        ) : (
+          optionalFields
+        )}
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-ink-dim">Priority</span>
-          <select
-            value={values.priority ?? ''}
-            onChange={(e) =>
-              update('priority', e.target.value ? Number(e.target.value) : null)
-            }
-            className={inputClass}
-          >
-            <option value="">None</option>
-            {[1, 2, 3, 4, 5].map((p) => (
-              <option key={p} value={p}>
-                {p}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-ink-dim">External URL</span>
-          <input
-            type="url"
-            value={values.externalUrl}
-            onChange={(e) => update('externalUrl', e.target.value)}
-            className={inputClass}
-          />
-        </label>
-
-        <TagInput
-          selected={values.tags}
-          onChange={(tags) => update('tags', tags)}
-        />
-
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex items-center gap-2 rounded-md bg-crimson px-4 py-2 text-sm font-medium text-on-crimson transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-crimson px-4 py-2 text-sm font-medium text-on-crimson transition-opacity disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
           >
             {isPending
               ? 'Saving…'

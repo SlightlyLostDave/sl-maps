@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+
 import { createClient } from '@lib/supabase/client';
 
 // At 22k+ unsorted rows, rendering the whole backlog as DOM list items isn't
@@ -40,6 +41,12 @@ type ReviewQueueValue = {
   prevPage: () => void;
   refresh: () => void;
   advanceFrom: (currentId: string) => Promise<string | null>;
+  // Mobile-only "is the queue list drawer open" state — lives here rather
+  // than local to ReviewList since it needs to be closed from elsewhere
+  // (e.g. when an item is selected) the same way MapControlsContext
+  // centralizes cross-component map actions.
+  listOpen: boolean;
+  setListOpen: (open: boolean) => void;
 };
 
 const ReviewQueueContext = createContext<ReviewQueueValue | null>(null);
@@ -53,6 +60,7 @@ export function ReviewQueueProvider({ children }: { children: ReactNode }) {
   const [page, setPage] = useState(0);
   const pageRef = useRef(0);
   const [refreshToken, setRefreshToken] = useState(0);
+  const [listOpen, setListOpen] = useState(false);
 
   // Derived from remainingCount, which is the same "needs_review=true,
   // not deleted" universe being paginated. This can shrink mid-session as
@@ -167,6 +175,8 @@ export function ReviewQueueProvider({ children }: { children: ReactNode }) {
     prevPage,
     refresh,
     advanceFrom,
+    listOpen,
+    setListOpen,
   };
 
   return (

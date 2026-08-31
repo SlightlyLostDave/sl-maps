@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+
 import { createClient } from '@lib/supabase/client';
 import Skeleton from '@/components/ui/Skeleton';
+import BottomSheet from '@/components/ui/BottomSheet';
 import PlacemarkForm from '@/components/map/PlacemarkForm';
 import { useMapControls } from '@/components/map/MapControlsContext';
 import {
@@ -63,7 +65,7 @@ export default function ReviewDetailPanel() {
   }
 
   return (
-    <aside className="flex w-[420px] shrink-0 flex-col gap-4 overflow-y-auto border-l border-line bg-bg-raised p-6">
+    <BottomSheet open onClose={() => advance(id)} widthClassName="md:w-105">
       <div className="flex items-center justify-between">
         <h2 className="eyebrow">Reviewing</h2>
         <button
@@ -106,13 +108,13 @@ export default function ReviewDetailPanel() {
           onDeleted={() => advance(id)}
         />
       )}
-    </aside>
+    </BottomSheet>
   );
 }
 
 function SelectPromptState() {
   return (
-    <aside className="flex w-[420px] shrink-0 items-center justify-center border-l border-line bg-bg-raised p-6 text-sm text-ink-faint">
+    <aside className="hidden w-105 shrink-0 items-center justify-center border-l border-line bg-bg-raised p-6 text-sm text-ink-faint md:flex">
       Select a placemark from the queue to review it.
     </aside>
   );
@@ -120,7 +122,7 @@ function SelectPromptState() {
 
 function QueueCompleteState() {
   return (
-    <aside className="flex w-[420px] shrink-0 flex-col items-center justify-center gap-1 border-l border-line bg-bg-raised p-6 text-center">
+    <aside className="hidden w-105 shrink-0 flex-col items-center justify-center gap-1 border-l border-line bg-bg-raised p-6 text-center md:flex">
       <h2 className="font-display text-xl text-ink">All caught up</h2>
       <p className="text-sm text-ink-faint">
         Nothing left in the review queue.

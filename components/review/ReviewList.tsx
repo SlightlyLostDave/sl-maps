@@ -1,13 +1,25 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+
+import DrawerShell from '@/components/ui/DrawerShell';
 import { useReviewQueue } from './ReviewQueueContext';
 
 export default function ReviewList() {
   const searchParams = useSearchParams();
   const selectedId = searchParams.get('id');
-  const { items, loading, totalCount, reviewedCount, page, pageCount, nextPage, prevPage } =
-    useReviewQueue();
+  const {
+    items,
+    loading,
+    totalCount,
+    reviewedCount,
+    page,
+    pageCount,
+    nextPage,
+    prevPage,
+    listOpen,
+    setListOpen,
+  } = useReviewQueue();
 
   function select(id: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -16,16 +28,24 @@ export default function ReviewList() {
     // pure client state, so update the URL directly rather than via <Link>
     // (which is router.push() sugar and hits the same flakiness).
     window.history.pushState(null, '', `?${params.toString()}`);
+    setListOpen(false);
   }
 
   return (
-    <aside className="flex w-80 shrink-0 flex-col gap-4 overflow-y-auto border-r border-line bg-bg-raised p-5">
-      <div>
-        <h2 className="eyebrow mb-1">Review queue</h2>
-        <p className="text-xs text-ink-faint">
-          {reviewedCount} of {totalCount} reviewed
-        </p>
-      </div>
+    <DrawerShell
+      title="Review queue"
+      toggleLabel={
+        <>
+          Queue · {reviewedCount}/{totalCount}
+        </>
+      }
+      widthClassName="w-72 md:w-80"
+      open={listOpen}
+      onOpenChange={setListOpen}
+    >
+      <p className="text-xs text-ink-faint">
+        {reviewedCount} of {totalCount} reviewed
+      </p>
       <ul className="flex flex-col gap-1">
         {items.map((item) => {
           const isSelected = item.id === selectedId;
@@ -77,6 +97,6 @@ export default function ReviewList() {
           </button>
         </div>
       )}
-    </aside>
+    </DrawerShell>
   );
 }

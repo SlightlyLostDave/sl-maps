@@ -27,6 +27,7 @@ import {
 import MapLoadingOverlay from './MapLoadingOverlay';
 import AddPlacemarkToolbar from './AddPlacemarkToolbar';
 import BasemapSwitcher from './BasemapSwitcher';
+import PlacingCrosshair from './PlacingCrosshair';
 import { useFilterTransition } from './FilterTransitionContext';
 import { useMapControls } from './MapControlsContext';
 
@@ -197,7 +198,7 @@ class ZoomControl implements mapboxgl.IControl {
       btn.textContent = label;
       btn.setAttribute('aria-label', ariaLabel);
       btn.className =
-        'grid h-8 w-8 place-items-center rounded-[4px] font-mono text-sm text-ink-dim hover:text-ink hover:border-crimson';
+        'grid h-11 w-11 md:h-8 md:w-8 place-items-center rounded-[4px] font-mono text-sm text-ink-dim hover:text-ink hover:border-crimson';
       btn.addEventListener('click', onClick);
       return btn;
     };
@@ -228,12 +229,12 @@ export default function MapView() {
   const requestIdRef = useRef(0);
   const inFlightRef = useRef(0);
   const pendingCenterRef = useRef<[number, number] | null>(null);
-  const addModeRef = useRef(false);
+  const placingRef = useRef(false);
   const draftMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
-  const [addMode, setAddMode] = useState(false);
+  const [placing, setPlacing] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [basemapId, setBasemapId] = useState<BasemapId>(() =>
@@ -278,6 +279,27 @@ export default function MapView() {
       },
       { enableHighAccuracy: true, timeout: 10000 },
     );
+  }
+
+  function startPlacing() {
+    setPlacing(true);
+  }
+
+  function cancelPlacing() {
+    setPlacing(false);
+  }
+
+  function confirmPlacing() {
+    const map = mapRef.current;
+    if (!map) return;
+    const center = map.getCenter();
+    setPlacing(false);
+    // Opening the drawer shrinks the map container (see the ResizeObserver
+    // below) — re-queue the confirmed point so it stays centered once the
+    // canvas resizes, same as the point-click handler does for an existing
+    // placemark's coordinates.
+    pendingCenterRef.current = [center.lng, center.lat];
+    openCreatePanel(center.lat, center.lng);
   }
 
   function handleToggleBasemap() {
@@ -593,14 +615,15 @@ export default function MapView() {
         // in 'style.load') is what keeps them from stacking duplicates on
         // every basemap switch.
 
-        // In add-mode, hovering an existing pin/cluster doesn't lead anywhere
-        // (the click handler below bails on hits), so the cursor should stay
+        // While placing a new pin, the map is being panned to position the
+        // fixed crosshair (see PlacingCrosshair) — hovering/clicking an
+        // existing pin or cluster shouldn't do anything, so the cursor stays
         // crosshair instead of flipping to pointer and back.
         map.on(
           'mouseenter',
           CLUSTER_CIRCLE_LAYER,
           () =>
-            (map.getCanvas().style.cursor = addModeRef.current
+            (map.getCanvas().style.cursor = placingRef.current
               ? 'crosshair'
               : 'pointer'),
         );
@@ -608,7 +631,7 @@ export default function MapView() {
           'mouseleave',
           CLUSTER_CIRCLE_LAYER,
           () =>
-            (map.getCanvas().style.cursor = addModeRef.current
+            (map.getCanvas().style.cursor = placingRef.current
               ? 'crosshair'
               : ''),
         );
@@ -616,7 +639,7 @@ export default function MapView() {
           'mouseenter',
           POINT_LAYER,
           () =>
-            (map.getCanvas().style.cursor = addModeRef.current
+            (map.getCanvas().style.cursor = placingRef.current
               ? 'crosshair'
               : 'pointer'),
         );
@@ -624,12 +647,13 @@ export default function MapView() {
           'mouseleave',
           POINT_LAYER,
           () =>
-            (map.getCanvas().style.cursor = addModeRef.current
+            (map.getCanvas().style.cursor = placingRef.current
               ? 'crosshair'
               : ''),
         );
 
         map.on('click', CLUSTER_CIRCLE_LAYER, (event) => {
+          if (placingRef.current) return;
           const [feature] = map.queryRenderedFeatures(event.point, {
             layers: [CLUSTER_CIRCLE_LAYER],
           });
@@ -652,6 +676,7 @@ export default function MapView() {
         });
 
         map.on('click', POINT_LAYER, (event) => {
+          if (placingRef.current) return;
           const [feature] = map.queryRenderedFeatures(event.point, {
             layers: [POINT_LAYER],
           });
@@ -680,23 +705,6 @@ export default function MapView() {
           // (history.pushState, which Next's router patches to stay in sync
           // with useSearchParams) instead of router.push().
           window.history.pushState(null, '', `?${params.toString()}`);
-        });
-
-        // Generic background click for add-mode — registered separately from
-        // the layer-scoped handlers above since it must fire on empty map
-        // area, not a specific layer. Bails if the click actually hit an
-        // existing point or cluster so clicking a pin still opens its detail
-        // instead of creating a duplicate underneath it.
-        map.on('click', (event) => {
-          if (!addModeRef.current) return;
-          const hits = map.queryRenderedFeatures(event.point, {
-            layers: [POINT_LAYER, CLUSTER_CIRCLE_LAYER],
-          });
-          if (hits.length > 0) return;
-          addModeRef.current = false;
-          setAddMode(false);
-          map.getCanvas().style.cursor = '';
-          openCreatePanel(event.lngLat.lat, event.lngLat.lng);
         });
       });
 
@@ -751,19 +759,19 @@ export default function MapView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Cursor and click-handler both need the latest add-mode without
-  // re-registering the click listener (which is bound once above) — same
+  // Cursor and click-handlers both need the latest placing-mode value
+  // without re-registering the click listeners (bound once above) — same
   // ref-mirroring pattern as filtersRef below.
   useEffect(() => {
-    addModeRef.current = addMode;
+    placingRef.current = placing;
     if (mapRef.current) {
-      mapRef.current.getCanvas().style.cursor = addMode ? 'crosshair' : '';
+      mapRef.current.getCanvas().style.cursor = placing ? 'crosshair' : '';
     }
-  }, [addMode]);
+  }, [placing]);
 
-  // Show a draggable marker at the pending create location so the user can
-  // see and fine-tune the pin's position while the "new placemark" form is
-  // open, instead of only finding out where it landed after saving.
+  // Show a marker at the confirmed create location once the "new placemark"
+  // form is open, so there's still visual confirmation of where it'll land.
+  // Position is fixed at confirm time (see confirmPlacing) — not draggable.
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapLoaded) return;
@@ -773,17 +781,9 @@ export default function MapView() {
       if (!draftMarkerRef.current) {
         draftMarkerRef.current = new mapboxgl.Marker({
           color: cssVar('--crimson', '#d5202b'),
-          draggable: true,
         })
           .setLngLat(lngLat)
           .addTo(map);
-        draftMarkerRef.current.on('dragend', () => {
-          const pos = draftMarkerRef.current!.getLngLat();
-          const params = new URLSearchParams(window.location.search);
-          params.set('lat', String(pos.lat));
-          params.set('lon', String(pos.lng));
-          window.history.pushState(null, '', `?${params.toString()}`);
-        });
       } else {
         draftMarkerRef.current.setLngLat(lngLat);
       }
@@ -806,10 +806,13 @@ export default function MapView() {
   return (
     <>
       <div ref={containerRef} className="h-full w-full" />
+      {placing && <PlacingCrosshair />}
       {mapLoaded && !isReviewQueue && (
         <AddPlacemarkToolbar
-          addMode={addMode}
-          onToggleAddMode={() => setAddMode((v) => !v)}
+          placing={placing}
+          onStartPlacing={startPlacing}
+          onCancelPlacing={cancelPlacing}
+          onConfirmPlacing={confirmPlacing}
           onUseLocation={handleUseLocation}
           locationError={locationError}
           isLocating={isLocating}

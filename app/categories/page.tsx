@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import CategoryExplorer from '@/components/categories/CategoryExplorer';
 import CategoryLoadingOverlay from '@/components/categories/CategoryLoadingOverlay';
 import { CategoryTransitionProvider } from '@/components/categories/CategoryTransitionContext';
+import AppHeader from '@/components/ui/AppHeader';
 
 export default async function CategoriesPage({
   searchParams,
@@ -14,20 +14,14 @@ export default async function CategoriesPage({
 
   return (
     <div className="flex min-h-screen flex-1 flex-col bg-background">
-      <header className="flex items-center justify-between border-b border-line px-6 py-4">
-        <div>
-          <div className="eyebrow mb-1">SL Maps</div>
-          <h1 className="font-display text-2xl text-ink">Categories</h1>
-        </div>
-        <div className="flex items-center gap-5">
-          <Link href="/review" className="text-sm text-ink-dim underline">
-            Review queue
-          </Link>
-          <Link href="/" className="text-sm text-ink-dim underline">
-            Back to map
-          </Link>
-        </div>
-      </header>
+      <AppHeader
+        title="Categories"
+        eyebrow="SL Maps"
+        links={[
+          { href: '/review', label: 'Review queue' },
+          { href: '/', label: 'Back to map' },
+        ]}
+      />
       <main className="relative flex min-h-0 flex-1 flex-col">
         <CategoryTransitionProvider>
           <CategoryLoadingOverlay />
