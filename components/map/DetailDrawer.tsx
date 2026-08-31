@@ -93,7 +93,7 @@ export default function DetailDrawer() {
   if (!id) return null;
 
   return (
-    <div className="fixed inset-0 z-30 flex items-end justify-center md:static md:z-auto md:h-full md:w-1/2 md:shrink-0 md:items-stretch md:justify-end">
+    <div className="fixed inset-0 z-30 flex items-end justify-center md:static md:z-auto md:h-full md:w-105 md:shrink-0 md:items-stretch md:justify-end">
       <div
         className="absolute inset-0 md:hidden"
         onClick={close}

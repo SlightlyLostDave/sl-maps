@@ -449,16 +449,15 @@ export default function MapView() {
             return {
               ...feature,
               geometry: toPointGeometry(feature.geometry),
-              // Supercluster (used internally by the clustered GeoJSON
-              // source) does not preserve each leaf feature's top-level `id`
-              // once features are clustered, so the click handler can't rely
-              // on feature.id — mirror it into properties, which clustering
-              // does preserve. icon_image is similarly precomputed here
-              // (rather than as a mapbox style expression) since a category's
-              // pin image may not be registered yet when this runs.
+              // placemarks_geojson returns id inside `properties`, not as a
+              // top-level GeoJSON feature id — and properties is what
+              // supercluster preserves once features get clustered, so the
+              // click handler reads id from there. icon_image is similarly
+              // precomputed here (rather than as a mapbox style expression)
+              // since a category's pin image may not be registered yet when
+              // this runs.
               properties: {
                 ...feature.properties,
-                id: feature.id as string,
                 icon_image,
               },
             };
