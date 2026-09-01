@@ -36,6 +36,7 @@ export function useFilterParams() {
   const near = nearParam ? parseNear(nearParam) : null;
   const radiusM = Number(searchParams.get('radius')) || DEFAULT_RADIUS_M;
   const place = searchParams.get('place');
+  const proximityEnabled = searchParams.get('proximity') === '1';
 
   const activeFilterCount =
     activeCatIds.size + (visitedStatus !== 'all' ? 1 : 0);
@@ -94,11 +95,9 @@ export function useFilterParams() {
     });
   }
 
-  // Clears `q` on purpose: this is a pivot to proximity mode (typed
-  // coordinates, or accepting the geocode suggestion chip) — the original
-  // free text is no longer a meaningful name/description/tag filter once
-  // the intent has resolved to "near this place", and keeping it would AND
-  // an unrelated text predicate onto the proximity query.
+  // Proximity search is opt-in (via the search box's toggle) and runs
+  // alongside `q`, not instead of it — the placemarks_search RPC already
+  // supports both predicates at once, so `q` is left untouched here.
   function setNear(
     lat: number,
     lon: number,
@@ -109,7 +108,6 @@ export function useFilterParams() {
       params.set('radius', String(Math.round(opts?.radiusM ?? DEFAULT_RADIUS_M)));
       if (opts?.place) params.set('place', opts.place);
       else params.delete('place');
-      params.delete('q');
     });
   }
 
@@ -119,12 +117,32 @@ export function useFilterParams() {
     });
   }
 
+  // Clears only the proximity search (near/radius/place), leaving `q` and
+  // the proximity toggle itself alone — used when the toggle is switched
+  // off without the user clearing their text search too.
+  function clearNear() {
+    updateParams((params) => {
+      params.delete('near');
+      params.delete('radius');
+      params.delete('place');
+    });
+  }
+
   function clearSearch() {
     updateParams((params) => {
       params.delete('q');
       params.delete('near');
       params.delete('radius');
       params.delete('place');
+    });
+  }
+
+  // A sticky mode preference, not tied to any one search session — left
+  // untouched by clearAll()/clearSearch() so it survives across searches.
+  function setProximityEnabled(enabled: boolean) {
+    updateParams((params) => {
+      if (enabled) params.set('proximity', '1');
+      else params.delete('proximity');
     });
   }
 
@@ -140,9 +158,12 @@ export function useFilterParams() {
     near,
     radiusM,
     place,
+    proximityEnabled,
     setQuery,
     setNear,
     setRadius,
+    clearNear,
     clearSearch,
+    setProximityEnabled,
   };
 }
