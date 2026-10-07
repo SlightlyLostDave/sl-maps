@@ -109,48 +109,35 @@ export default async function CategoryList({
       .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
-    <aside className="flex w-80 shrink-0 min-h-0 flex-col gap-4 border-r border-line bg-bg-raised p-5">
-      <div className="flex items-center justify-between">
-        <h2 className="eyebrow mb-1">Categories</h2>
-        <CategoryNavLink
-          href="/categories?id=new"
-          className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-            selectedId === 'new'
-              ? 'bg-ground-2 text-ink'
-              : 'text-ink-dim hover:bg-ground-2 hover:text-ink'
-          }`}
-        >
-          + New category
-        </CategoryNavLink>
-      </div>
-      <ul className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden">
-        {topLevel.map((category) => (
-          <li key={category.id}>
-            <ul className="flex flex-col gap-1">
+    // Rendered inside the shell's ContextPanel (which owns the heading, the
+    // "+ New" action and scrolling) by app/(app)/categories/page.tsx.
+    <ul className="flex flex-col gap-1 overflow-x-hidden">
+      {topLevel.map((category) => (
+        <li key={category.id}>
+          <ul className="flex flex-col gap-1">
+            <CategoryRowLink
+              category={category}
+              isSelected={category.id === selectedId}
+              count={counts.get(category.id) ?? 0}
+              indent={false}
+            />
+            {childrenOf(category.id).map((child) => (
               <CategoryRowLink
-                category={category}
-                isSelected={category.id === selectedId}
-                count={counts.get(category.id) ?? 0}
-                indent={false}
+                key={child.id}
+                category={child}
+                isSelected={child.id === selectedId}
+                count={counts.get(child.id) ?? 0}
+                indent
               />
-              {childrenOf(category.id).map((child) => (
-                <CategoryRowLink
-                  key={child.id}
-                  category={child}
-                  isSelected={child.id === selectedId}
-                  count={counts.get(child.id) ?? 0}
-                  indent
-                />
-              ))}
-            </ul>
-          </li>
-        ))}
-        {categories.length === 0 && (
-          <li className="px-2 py-1.5 text-sm text-ink-faint">
-            No categories yet.
-          </li>
-        )}
-      </ul>
-    </aside>
+            ))}
+          </ul>
+        </li>
+      ))}
+      {categories.length === 0 && (
+        <li className="px-2 py-1.5 text-sm text-ink-faint">
+          No categories yet.
+        </li>
+      )}
+    </ul>
   );
 }

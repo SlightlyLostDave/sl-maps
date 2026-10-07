@@ -17,10 +17,11 @@ export default function BasemapSwitcher({
   const target = BASEMAPS[otherBasemapId(activeBasemapId)];
 
   return (
-    <div className="absolute left-[calc(0.75rem+env(safe-area-inset-left))] bottom-[calc(2.5rem+env(safe-area-inset-bottom))] z-10 md:left-auto md:right-3 md:bottom-3">
-      {/* Mobile: bottom-left, raised above the AttributionControl strip that
-          also docks bottom-left. Desktop: unchanged bottom-right, clear of
-          the AddPlacemarkToolbar's top-right cluster. */}
+    <div className="absolute left-[calc(0.75rem+env(safe-area-inset-left))] bottom-3 z-10 md:left-auto md:right-3 md:bottom-3">
+      {/* Mobile: bottom-left, opposite AddPlacemarkToolbar (the map ends
+          above the bottom tab bar, which handles the safe area itself).
+          Desktop: bottom-right, clear of the AddPlacemarkToolbar's
+          top-right cluster. */}
       <div className="flex flex-col gap-1.5 rounded-md border border-line-strong bg-bg-raised p-1 shadow-(--shadow)">
         <button
           type="button"

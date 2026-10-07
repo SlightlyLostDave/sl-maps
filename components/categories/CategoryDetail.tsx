@@ -110,19 +110,15 @@ export default async function CategoryDetail({
   id?: string;
   error?: string;
 }) {
-  if (!id) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-sm text-ink-faint">
-        Select a category from the list, or create a new one.
-      </div>
-    );
-  }
+  // Rendered inside the shell's DetailPanel (which owns scrolling, padding
+  // and the close button) only when a category is selected.
+  if (!id) return null;
 
   if (id === 'new') {
     const parentOptions = await getTopLevelCategories();
     return (
-      <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
-        <div>
+      <div className="flex flex-col gap-5">
+        <div className="md:pr-16">
           <h2 className="eyebrow mb-1">New category</h2>
           <h1 className="font-display text-2xl text-ink">Create category</h1>
         </div>
@@ -150,9 +146,9 @@ export default async function CategoryDetail({
 
   if (!category) {
     return (
-      <div className="flex flex-1 items-center justify-center text-sm text-ink-faint">
+      <p className="text-sm text-ink-faint">
         That category couldn&rsquo;t be found. It may have been deleted.
-      </div>
+      </p>
     );
   }
 
@@ -165,78 +161,80 @@ export default async function CategoryDetail({
   const deleteWithId = deleteCategory.bind(null, category.id);
 
   return (
-    <div className="flex flex-1 flex-col gap-5 overflow-y-auto p-6">
-      <div>
+    <div className="flex flex-col gap-5">
+      <div className="md:pr-16">
         <h2 className="eyebrow mb-1">Editing</h2>
         <h1 className="font-display text-2xl text-ink">{category.name}</h1>
       </div>
 
       <ErrorBanner error={error} />
 
-      <form
-        key={category.id}
-        action={updateWithId}
-        className="flex max-w-lg flex-col gap-4"
-      >
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-ink-dim">Slug</span>
-          <input
-            readOnly
-            disabled
-            value={category.slug}
-            className={`${inputClass} opacity-60`}
-          />
-        </label>
-        <CategoryFields parentOptions={parentOptions} category={category} />
-        <div>
-          <SubmitButton>Save changes</SubmitButton>
-        </div>
-      </form>
-
-      <section className="max-w-lg rounded-md border border-crimson-deep bg-crimson-wash p-4">
-        <h3 className="mb-2 text-sm font-medium text-crimson-lift">
-          Delete category
-        </h3>
-        <form action={deleteWithId} className="flex flex-col gap-3">
-          {childCount > 0 && (
-            <p className="text-xs text-crimson-lift">
-              {childCount} subcategor{childCount === 1 ? 'y' : 'ies'} still
-              reference this category. Reassign or delete them first.
-            </p>
-          )}
-          {placemarkCount > 0 && (
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-ink-dim">
-                {placemarkCount} placemark{placemarkCount === 1 ? '' : 's'} use
-                this category — move them to:
-              </span>
-              <select
-                name="replacement_category_id"
-                required
-                className={inputClass}
-              >
-                <option value="">Choose a replacement…</option>
-                {[...otherCategories]
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          )}
+      <div className="grid gap-6 md:grid-cols-2 md:items-start">
+        <form
+          key={category.id}
+          action={updateWithId}
+          className="flex flex-col gap-4"
+        >
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-ink-dim">Slug</span>
+            <input
+              readOnly
+              disabled
+              value={category.slug}
+              className={`${inputClass} opacity-60`}
+            />
+          </label>
+          <CategoryFields parentOptions={parentOptions} category={category} />
           <div>
-            <SubmitButton
-              variant="outline"
-              disabled={childCount > 0}
-              className="self-start border-crimson-deep text-crimson-lift"
-            >
-              {placemarkCount > 0 ? 'Reassign & delete' : 'Delete category'}
-            </SubmitButton>
+            <SubmitButton>Save changes</SubmitButton>
           </div>
         </form>
-      </section>
+
+        <section className="rounded-md border border-crimson-deep bg-crimson-wash p-4">
+          <h3 className="mb-2 text-sm font-medium text-crimson-lift">
+            Delete category
+          </h3>
+          <form action={deleteWithId} className="flex flex-col gap-3">
+            {childCount > 0 && (
+              <p className="text-xs text-crimson-lift">
+                {childCount} subcategor{childCount === 1 ? 'y' : 'ies'} still
+                reference this category. Reassign or delete them first.
+              </p>
+            )}
+            {placemarkCount > 0 && (
+              <label className="flex flex-col gap-1">
+                <span className="text-xs font-medium text-ink-dim">
+                  {placemarkCount} placemark{placemarkCount === 1 ? '' : 's'}{' '}
+                  use this category — move them to:
+                </span>
+                <select
+                  name="replacement_category_id"
+                  required
+                  className={inputClass}
+                >
+                  <option value="">Choose a replacement…</option>
+                  {[...otherCategories]
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            )}
+            <div>
+              <SubmitButton
+                variant="outline"
+                disabled={childCount > 0}
+                className="self-start border-crimson-deep text-crimson-lift"
+              >
+                {placemarkCount > 0 ? 'Reassign & delete' : 'Delete category'}
+              </SubmitButton>
+            </div>
+          </form>
+        </section>
+      </div>
     </div>
   );
 }

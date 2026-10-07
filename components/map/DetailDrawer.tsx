@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 
 import { createClient } from '@lib/supabase/client';
 import Skeleton from '@components/ui/Skeleton';
-import BottomSheet from '@components/ui/BottomSheet';
+import DetailPanel from '@components/shell/DetailPanel';
 import PlacemarkForm from './PlacemarkForm';
 import { detailsToFormValues, type PlacemarkDetails } from './placemarkDetails';
 
@@ -85,9 +85,9 @@ export default function DetailDrawer() {
   if (!id) return null;
 
   return (
-    <BottomSheet open onClose={close} widthClassName="md:w-105">
+    <DetailPanel onClose={close}>
       {isCreate && (
-        <>
+        <div className="max-w-3xl">
           <h2 className="eyebrow mb-1">New placemark</h2>
           <PlacemarkForm
             mode="create"
@@ -96,7 +96,7 @@ export default function DetailDrawer() {
             onSaved={(newId) => openView(newId)}
             onCancel={close}
           />
-        </>
+        </div>
       )}
 
       {!isCreate && loading && (
@@ -126,7 +126,7 @@ export default function DetailDrawer() {
       )}
 
       {details && editing && (
-        <>
+        <div className="max-w-3xl">
           <h2 className="eyebrow mb-1">Editing</h2>
           <PlacemarkForm
             mode="edit"
@@ -141,7 +141,7 @@ export default function DetailDrawer() {
             onCancel={closeEdit}
             onDeleted={close}
           />
-        </>
+        </div>
       )}
 
       {details && !editing && (
@@ -180,67 +180,75 @@ export default function DetailDrawer() {
             </button>
           </div>
 
-          {details.description && (
-            <p className="mb-3 text-sm leading-relaxed text-ink-dim">
-              {details.description}
-            </p>
-          )}
-
-          <div className="grid grid-cols-[84px_1fr] items-center gap-x-3.5 gap-y-2 text-sm">
-            <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
-              Status
-            </div>
-            <div className="text-ink-dim">
-              {details.visited
-                ? `Visited${details.last_visited_on ? ` · ${details.last_visited_on}` : ''}`
-                : 'Not visited'}
+          <div className="grid gap-x-10 gap-y-4 md:grid-cols-2">
+            <div>
+              {details.description ? (
+                <p className="text-sm leading-relaxed text-ink-dim">
+                  {details.description}
+                </p>
+              ) : (
+                <p className="text-sm text-ink-faint">No description.</p>
+              )}
             </div>
 
-            {details.priority != null && (
-              <>
+            <div>
+              <div className="grid grid-cols-[84px_1fr] items-center gap-x-3.5 gap-y-2 text-sm">
                 <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
-                  Priority
+                  Status
                 </div>
-                <div className="text-ink-dim">{details.priority} / 5</div>
-              </>
-            )}
+                <div className="text-ink-dim">
+                  {details.visited
+                    ? `Visited${details.last_visited_on ? ` · ${details.last_visited_on}` : ''}`
+                    : 'Not visited'}
+                </div>
 
-            <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
-              Source
-            </div>
-            <div className="text-ink-dim">{details.source}</div>
+                {details.priority != null && (
+                  <>
+                    <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                      Priority
+                    </div>
+                    <div className="text-ink-dim">{details.priority} / 5</div>
+                  </>
+                )}
 
-            {details.tags.length > 0 && (
-              <>
                 <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
-                  Tags
+                  Source
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {details.tags.map((tag) => (
-                    <span
-                      key={tag.id}
-                      className="rounded-[3px] border border-line-strong px-1.5 py-0.5 font-mono text-[9px] text-ink-faint"
-                    >
-                      {tag.name}
-                    </span>
-                  ))}
-                </div>
-              </>
-            )}
+                <div className="text-ink-dim">{details.source}</div>
+
+                {details.tags.length > 0 && (
+                  <>
+                    <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                      Tags
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {details.tags.map((tag) => (
+                        <span
+                          key={tag.id}
+                          className="rounded-[3px] border border-line-strong px-1.5 py-0.5 font-mono text-[9px] text-ink-faint"
+                        >
+                          {tag.name}
+                        </span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {details.external_url && (
+                <a
+                  href={details.external_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-3 inline-block text-sm text-crimson-lift underline"
+                >
+                  External link
+                </a>
+              )}
+            </div>
           </div>
-
-          {details.external_url && (
-            <a
-              href={details.external_url}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-3 inline-block text-sm text-crimson-lift underline"
-            >
-              External link
-            </a>
-          )}
         </>
       )}
-    </BottomSheet>
+    </DetailPanel>
   );
 }

@@ -1,5 +1,5 @@
 import { createClient } from '@lib/supabase/server';
-import SidebarShell from './SidebarShell';
+import MapPanelSwitcher from './MapPanelSwitcher';
 import FilterPanel, { type CategoryItem } from './FilterPanel';
 import SearchBox from './SearchBox';
 import SearchResultsList from './SearchResultsList';
@@ -47,7 +47,11 @@ async function getAggregates(
   return { categoryCounts, totalCount, visitedCount };
 }
 
-export default async function Sidebar() {
+// Server half of the map route's context panels: fetches category counts
+// for the filters panel, then hands both panels' content to
+// MapPanelSwitcher, which picks one client-side (Search ↔ Filters is a
+// shallow pushState change that never re-runs this server component).
+export default async function MapPanels() {
   const supabase = await createClient();
 
   const [{ data: categories, error }, aggregates] = await Promise.all([
@@ -81,15 +85,21 @@ export default async function Sidebar() {
   }));
 
   return (
-    <SidebarShell>
-      <SearchBox />
-      <SearchResultsList />
-      <FilterPanel
-        categories={items}
-        totalCount={aggregates.totalCount}
-        visitedCount={aggregates.visitedCount}
-        notVisitedCount={aggregates.totalCount - aggregates.visitedCount}
-      />
-    </SidebarShell>
+    <MapPanelSwitcher
+      search={
+        <>
+          <SearchBox />
+          <SearchResultsList />
+        </>
+      }
+      filters={
+        <FilterPanel
+          categories={items}
+          totalCount={aggregates.totalCount}
+          visitedCount={aggregates.visitedCount}
+          notVisitedCount={aggregates.totalCount - aggregates.visitedCount}
+        />
+      }
+    />
   );
 }

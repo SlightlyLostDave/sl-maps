@@ -1,8 +1,9 @@
 import { redirect } from 'next/navigation';
 
 import { createClient } from '@lib/supabase/server';
-import ReviewExplorer from '@components/review/ReviewExplorer';
-import AppHeader from '@components/ui/AppHeader';
+import ReviewList from '@components/review/ReviewList';
+import ReviewDetailPanel from '@components/review/ReviewDetailPanel';
+import { ReviewQueueProvider } from '@components/review/ReviewQueueContext';
 
 async function firstUnsortedId(): Promise<string | null> {
   const supabase = await createClient();
@@ -29,23 +30,16 @@ export default async function ReviewPage({
   if (!selectedId) {
     const firstId = await firstUnsortedId();
     if (firstId) redirect(`/review?id=${firstId}`);
-    // else: queue is empty, fall through — ReviewExplorer renders the
+    // else: queue is empty, fall through — ReviewList renders the
     // "all caught up" state itself.
   }
 
+  // The queue provider is page-scoped (not in the (app) layout) so the
+  // backlog only loads while the review context is open.
   return (
-    <div className="flex h-full flex-1 flex-col overflow-hidden bg-background">
-      <AppHeader
-        title="Review queue"
-        eyebrow="SL Maps"
-        links={[
-          { href: '/categories', label: 'Categories' },
-          { href: '/', label: 'Back to map' },
-        ]}
-      />
-      <main className="flex min-h-0 flex-1 flex-col">
-        <ReviewExplorer />
-      </main>
-    </div>
+    <ReviewQueueProvider>
+      <ReviewList />
+      <ReviewDetailPanel />
+    </ReviewQueueProvider>
   );
 }

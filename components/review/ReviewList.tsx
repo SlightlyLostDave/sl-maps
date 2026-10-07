@@ -2,7 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 
-import DrawerShell from '@components/ui/DrawerShell';
+import ContextPanel from '@components/shell/ContextPanel';
 import { useReviewQueue } from './ReviewQueueContext';
 
 export default function ReviewList() {
@@ -17,8 +17,6 @@ export default function ReviewList() {
     pageCount,
     nextPage,
     prevPage,
-    listOpen,
-    setListOpen,
   } = useReviewQueue();
 
   function select(id: string) {
@@ -28,54 +26,69 @@ export default function ReviewList() {
     // pure client state, so update the URL directly rather than via <Link>
     // (which is router.push() sugar and hits the same flakiness).
     window.history.pushState(null, '', `?${params.toString()}`);
-    setListOpen(false);
   }
 
+  const progress = totalCount > 0 ? (reviewedCount / totalCount) * 100 : 0;
+
   return (
-    <DrawerShell
-      title="Review queue"
-      toggleLabel={
+    <ContextPanel title="Review queue">
+      <div className="flex shrink-0 flex-col gap-1.5">
+        <p className="font-mono text-xs text-ink-faint">
+          <span className="text-ink">{reviewedCount}</span> of {totalCount}{' '}
+          reviewed
+        </p>
+        <div className="h-1 overflow-hidden rounded-full bg-ground-2">
+          <div
+            className="h-full rounded-full bg-patina"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      {!loading && items.length === 0 ? (
+        <div className="flex flex-col items-center gap-1 py-10 text-center">
+          <h2 className="font-display text-xl text-ink">All caught up</h2>
+          <p className="text-sm text-ink-faint">
+            Nothing left in the review queue.
+          </p>
+        </div>
+      ) : (
         <>
-          Queue · {reviewedCount}/{totalCount}
+          {!selectedId && !loading && (
+            <p className="text-sm text-ink-faint">
+              Select a placemark to review it.
+            </p>
+          )}
+          <ul className="flex flex-col gap-2">
+            {items.map((item) => {
+              const isSelected = item.id === selectedId;
+              return (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => select(item.id)}
+                    className={`flex w-full flex-col gap-1 rounded-lg border bg-ground-2 px-3 py-2.5 text-left transition-colors ${
+                      isSelected
+                        ? 'border-crimson text-ink'
+                        : 'border-line text-ink-dim hover:border-line-strong hover:text-ink'
+                    }`}
+                  >
+                    <span className="truncate text-sm font-medium">
+                      {item.name}
+                    </span>
+                    <span className="font-mono text-[10px] text-ink-faint">
+                      {item.categorySlug ?? 'uncategorized'}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </>
-      }
-      widthClassName="w-72 md:w-80"
-      open={listOpen}
-      onOpenChange={setListOpen}
-    >
-      <p className="text-xs text-ink-faint">
-        {reviewedCount} of {totalCount} reviewed
-      </p>
-      <ul className="flex flex-col gap-1">
-        {items.map((item) => {
-          const isSelected = item.id === selectedId;
-          return (
-            <li key={item.id}>
-              <button
-                type="button"
-                onClick={() => select(item.id)}
-                className={`flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
-                  isSelected
-                    ? 'bg-ground-2 text-ink'
-                    : 'text-ink-dim hover:bg-ground-2 hover:text-ink'
-                }`}
-              >
-                <span className="truncate">{item.name}</span>
-                <span className="shrink-0 font-mono text-xs text-ink-faint">
-                  {item.categorySlug ?? 'uncategorized'}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-        {!loading && items.length === 0 && (
-          <li className="px-2 py-1.5 text-sm text-ink-faint">
-            Nothing left to review.
-          </li>
-        )}
-      </ul>
+      )}
+
       {pageCount > 1 && (
-        <div className="flex items-center justify-between border-t border-line pt-3">
+        <div className="flex shrink-0 items-center justify-between border-t border-line pt-3">
           <button
             type="button"
             onClick={prevPage}
@@ -97,6 +110,6 @@ export default function ReviewList() {
           </button>
         </div>
       )}
-    </DrawerShell>
+    </ContextPanel>
   );
 }

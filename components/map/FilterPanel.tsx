@@ -61,9 +61,12 @@ export default function FilterPanel({
   const matchingCount = useMatchCount(activeCatIds, visitedStatus);
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="flex shrink-0 items-center justify-between">
-        <h2 className="eyebrow">Filters</h2>
+        <p className="font-mono text-xs text-ink-faint">
+          <span className="text-ink">{matchingCount ?? '…'}</span> of{' '}
+          {totalCount} placemarks
+        </p>
         {activeFilterCount > 0 && (
           <button
             type="button"
@@ -74,11 +77,6 @@ export default function FilterPanel({
           </button>
         )}
       </div>
-
-      <p className="shrink-0 font-mono text-xs text-ink-faint">
-        <span className="text-ink">{matchingCount ?? '…'}</span> of {totalCount}{' '}
-        placemarks
-      </p>
 
       <div className="flex min-h-0 flex-1 flex-col border-t border-line pt-3">
         <CategoryFilter categories={categories} />

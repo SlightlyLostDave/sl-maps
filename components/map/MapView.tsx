@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams, usePathname } from 'next/navigation';
+import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
@@ -180,6 +180,18 @@ function toRenderableFeatures(
     });
 }
 
+// How much of the map's bottom edge the DetailPanel covers, so the camera
+// can treat only the visible strip above it as the viewport. The panel
+// overlays the map (rather than shrinking it), so this is applied as map
+// padding instead of relying on a container resize. Mirrors DetailPanel's
+// sizing: flush to the map's bottom edge at h-2/3 on desktop; mobile
+// sheets vary with content, so approximate half the height.
+function detailBottomPadding(container: HTMLElement | null, open: boolean) {
+  if (!open || !container) return 0;
+  const desktop = window.matchMedia('(min-width: 768px)').matches;
+  return Math.round(container.clientHeight * (desktop ? 2 / 3 : 0.5));
+}
+
 function cssVar(name: string, fallback: string) {
   if (typeof window === 'undefined') return fallback;
   const value = getComputedStyle(document.documentElement)
@@ -289,6 +301,7 @@ export default function MapView() {
   const pendingCenterRef = useRef<[number, number] | null>(null);
   const placingRef = useRef(false);
   const draftMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const detailOpenRef = useRef(false);
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
@@ -302,20 +315,27 @@ export default function MapView() {
   const searchParams = useSearchParams();
   const filters = parseFilters(searchParams);
   const filtersKey = JSON.stringify(filters);
-  // MapView fully unmounts/remounts between routes (they're separate
-  // pages), so this is stable for the component's lifetime — same as
-  // basemapId's "read once at mount" treatment.
-  const isReviewQueue = usePathname() === '/review';
-  // The review queue has its own filter surface (needs_review scoping) and
-  // no search UI of its own — ignore any q/near params so a stray URL
-  // param can't switch its map into global search rendering.
+  // MapView lives in the (app) layout and persists across routes, so the
+  // pathname changes over its lifetime — map event handlers (bound once)
+  // read it through pathnameRef, and an effect below refetches when it
+  // changes.
+  const pathname = usePathname();
+  const router = useRouter();
+  const pathnameRef = useRef(pathname);
+  const routerRef = useRef(router);
+  // Only the map route (`/`) has search, filters and placemark creation.
+  // The review queue scopes to needs_review instead, and `?id=` on
+  // /categories is a category id — ignore q/near/id=new params elsewhere so
+  // a stray URL param can't switch the map into search or create rendering.
+  const isMapRoute = pathname === '/';
   const searchActive =
-    !isReviewQueue && (Boolean(filters.query?.trim()) || filters.near != null);
+    isMapRoute && (Boolean(filters.query?.trim()) || filters.near != null);
   const { isPending: filtersPending } = useFilterTransition();
   const mapControls = useMapControls();
   const { collection: searchCollection } = useSearchResults();
 
-  const isCreating = searchParams.get('id') === 'new';
+  const detailId = searchParams.get('id');
+  const isCreating = isMapRoute && detailId === 'new';
   const draftLat = searchParams.get('lat');
   const draftLon = searchParams.get('lon');
 
@@ -358,10 +378,10 @@ export default function MapView() {
     if (!map) return;
     const center = map.getCenter();
     setPlacing(false);
-    // Opening the drawer shrinks the map container (see the ResizeObserver
-    // below) — re-queue the confirmed point so it stays centered once the
-    // canvas resizes, same as the point-click handler does for an existing
-    // placemark's coordinates.
+    // Opening the detail panel pads the bottom of the map (see the
+    // detail-padding effect below) — queue the confirmed point so it stays
+    // centered in the visible strip above the panel, same as the
+    // point-click handler does for an existing placemark's coordinates.
     pendingCenterRef.current = [center.lng, center.lat];
     openCreatePanel(center.lat, center.lng);
   }
@@ -437,10 +457,12 @@ export default function MapView() {
       mapRef.current = map;
       map.addControl(new ZoomControl(), 'top-right');
       // Freed up bottom-right (Mapbox's default attribution anchor) for
-      // BasemapSwitcher by moving attribution to bottom-left instead.
+      // BasemapSwitcher, and kept clear of the bottom edge entirely since
+      // the detail panel overlays the lower ⅔ of the map — top-left is
+      // otherwise unused now that the context panel sits beside the map.
       map.addControl(
         new mapboxgl.AttributionControl({ compact: true }),
-        'bottom-left',
+        'top-left',
       );
 
       mapControls.register({
@@ -457,14 +479,20 @@ export default function MapView() {
       });
 
       // mapbox-gl only calls resize() on window resize (trackResize), not on
-      // container resize — the DetailDrawer opening/closing changes the map
-      // container's width via flex layout without firing a window resize
-      // event, so the canvas would otherwise keep rendering at its stale size.
+      // container resize — collapsing/expanding the context panel changes
+      // the map container's width via flex layout without firing a window
+      // resize event, so the canvas would otherwise keep rendering at its
+      // stale size. The detail panel's bottom padding is height-relative, so
+      // it's recomputed here too.
       const resizeObserver = new ResizeObserver(() => {
         map.resize();
-        if (pendingCenterRef.current) {
-          map.easeTo({ center: pendingCenterRef.current, duration: 300 });
-          pendingCenterRef.current = null;
+        if (detailOpenRef.current) {
+          map.setPadding({
+            top: 0,
+            right: 0,
+            left: 0,
+            bottom: detailBottomPadding(containerRef.current, true),
+          });
         }
       });
       resizeObserver.observe(containerRef.current);
@@ -498,7 +526,7 @@ export default function MapView() {
           in_east: bounds.getEast(),
           in_north: bounds.getNorth(),
           in_category_ids: categoryIds,
-          in_needs_review: isReviewQueue,
+          in_needs_review: pathnameRef.current === '/review',
         });
 
         inFlightRef.current -= 1;
@@ -714,18 +742,27 @@ export default function MapView() {
           });
           const id = feature?.properties?.id ?? feature?.id;
           if (id == null) return;
-          // Opening the drawer shrinks the map container (see the
-          // ResizeObserver above), which re-centers the viewport around its
-          // old center in the new, narrower canvas — re-queue the clicked
-          // placemark's coordinates so it ends up centered in that view
-          // instead of drifting toward the edge.
-          if (feature?.geometry.type === 'Point') {
-            pendingCenterRef.current = feature.geometry.coordinates as [
-              number,
-              number,
-            ];
-          }
           const params = new URLSearchParams(window.location.search);
+          // Queue the clicked placemark's coordinates so the detail-padding
+          // effect below centers it in the visible strip above the detail
+          // panel once it opens. Re-clicking the already-open placemark
+          // doesn't change the URL (so that effect won't run) — center it
+          // directly instead.
+          if (feature?.geometry.type === 'Point') {
+            const center = feature.geometry.coordinates as [number, number];
+            if (params.get('id') === String(id)) {
+              map.easeTo({ center, duration: 300 });
+            } else {
+              pendingCenterRef.current = center;
+            }
+          }
+          // On /categories, `?id=` means a category — open the placemark on
+          // the map route instead. That's a real route change, so it goes
+          // through the router rather than the pushState escape hatch below.
+          if (pathnameRef.current === '/categories') {
+            routerRef.current.push(`/?id=${encodeURIComponent(String(id))}`);
+            return;
+          }
           params.set('id', String(id));
           // Plain router.push() here round-trips through the server (this
           // route reads cookies, so it's fully dynamic) and, per
@@ -790,6 +827,50 @@ export default function MapView() {
     // rather than tearing down and recreating the whole map.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keep the refs read by once-bound map handlers current, and refetch when
+  // switching routes (e.g. into or out of the review queue's needs_review
+  // scope) since the layout keeps this map mounted across them.
+  useEffect(() => {
+    pathnameRef.current = pathname;
+    routerRef.current = router;
+  }, [pathname, router]);
+
+  useEffect(() => {
+    if (!searchActiveRef.current) refreshRef.current();
+  }, [pathname]);
+
+  // Placing mode only exists on the map route — drop it when leaving.
+  // Adjusted during render rather than in the effect above, per
+  // https://react.dev/learn/you-might-not-need-an-effect (same pattern as
+  // SearchBox's lastQuery).
+  const [lastPathname, setLastPathname] = useState(pathname);
+  if (pathname !== lastPathname) {
+    setLastPathname(pathname);
+    if (pathname !== '/') setPlacing(false);
+  }
+
+  // The detail panel overlays the bottom of the map, so pad the camera to
+  // keep the selected placemark in the visible strip above it. Runs on
+  // every selection change (not just open/close) so a queued pin-click
+  // center (pendingCenterRef) is applied together with the padding.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    const open = detailId != null;
+    detailOpenRef.current = open;
+    map.easeTo({
+      padding: {
+        top: 0,
+        right: 0,
+        left: 0,
+        bottom: detailBottomPadding(containerRef.current, open),
+      },
+      ...(pendingCenterRef.current ? { center: pendingCenterRef.current } : {}),
+      duration: 300,
+    });
+    pendingCenterRef.current = null;
+  }, [detailId, mapLoaded]);
 
   // Cursor and click-handlers both need the latest placing-mode value
   // without re-registering the click listeners (bound once above) — same
@@ -877,7 +958,7 @@ export default function MapView() {
     <>
       <div ref={containerRef} className="h-full w-full" />
       {placing && <PlacingCrosshair />}
-      {mapLoaded && !isReviewQueue && (
+      {mapLoaded && isMapRoute && (
         <AddPlacemarkToolbar
           placing={placing}
           onStartPlacing={startPlacing}

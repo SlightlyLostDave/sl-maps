@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 
 import { createClient } from '@lib/supabase/client';
 import Skeleton from '@components/ui/Skeleton';
-import BottomSheet from '@components/ui/BottomSheet';
+import DetailPanel from '@components/shell/DetailPanel';
 import PlacemarkForm from '@components/map/PlacemarkForm';
 import { useMapControls } from '@components/map/MapControlsContext';
 import {
@@ -17,7 +17,7 @@ import { useReviewQueue } from './ReviewQueueContext';
 export default function ReviewDetailPanel() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
-  const { items, advanceFrom } = useReviewQueue();
+  const { advanceFrom } = useReviewQueue();
   const mapControls = useMapControls();
 
   const [result, setResult] = useState<{
@@ -60,73 +60,63 @@ export default function ReviewDetailPanel() {
     window.history.pushState(null, '', next ? `?${params.toString()}` : '?');
   }
 
-  if (!id) {
-    return items.length === 0 ? <QueueCompleteState /> : <SelectPromptState />;
+  function close() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('id');
+    const query = params.toString();
+    window.history.pushState(null, '', query ? `?${query}` : '?');
   }
 
-  return (
-    <BottomSheet open onClose={() => advance(id)} widthClassName="md:w-105">
-      <div className="flex items-center justify-between">
-        <h2 className="eyebrow">Reviewing</h2>
-        <button
-          type="button"
-          onClick={() => advance(id)}
-          className="font-mono text-xs uppercase tracking-widest text-ink-faint hover:text-ink"
-        >
-          Skip
-        </button>
-      </div>
+  // With nothing selected (including an empty queue), ReviewList shows the
+  // "select a placemark" / "all caught up" state instead.
+  if (!id) return null;
 
-      {loading && (
-        <div>
-          <Skeleton className="h-6 w-40" />
-          <div className="mt-4 flex flex-col gap-4">
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-9 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </div>
+  return (
+    <DetailPanel onClose={close}>
+      <div className="max-w-3xl">
+        <div className="mb-1 flex items-center justify-between md:pr-16">
+          <h2 className="eyebrow">Reviewing</h2>
+          <button
+            type="button"
+            onClick={() => advance(id)}
+            className="font-mono text-xs uppercase tracking-widest text-ink-faint hover:text-ink"
+          >
+            Skip
+          </button>
         </div>
-      )}
 
-      {!loading && !details && (
-        <p className="text-sm text-ink-faint">
-          That placemark couldn&rsquo;t be found. It may have been deleted.
-        </p>
-      )}
+        {loading && (
+          <div>
+            <Skeleton className="h-6 w-40" />
+            <div className="mt-4 flex flex-col gap-4">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-24 w-full" />
+            </div>
+          </div>
+        )}
 
-      {details && (
-        <PlacemarkForm
-          key={`${id}-${resetKey}`}
-          mode="edit"
-          placemarkId={details.id}
-          initial={detailsToFormValues(details)}
-          lat={details.lat}
-          lon={details.lon}
-          submitLabel="Save & next"
-          onSaved={(savedId) => advance(savedId)}
-          onCancel={() => setResetKey((n) => n + 1)}
-          onDeleted={() => advance(id)}
-        />
-      )}
-    </BottomSheet>
-  );
-}
+        {!loading && !details && (
+          <p className="text-sm text-ink-faint">
+            That placemark couldn&rsquo;t be found. It may have been deleted.
+          </p>
+        )}
 
-function SelectPromptState() {
-  return (
-    <aside className="hidden w-105 shrink-0 items-center justify-center border-l border-line bg-bg-raised p-6 text-sm text-ink-faint md:flex">
-      Select a placemark from the queue to review it.
-    </aside>
-  );
-}
-
-function QueueCompleteState() {
-  return (
-    <aside className="hidden w-105 shrink-0 flex-col items-center justify-center gap-1 border-l border-line bg-bg-raised p-6 text-center md:flex">
-      <h2 className="font-display text-xl text-ink">All caught up</h2>
-      <p className="text-sm text-ink-faint">
-        Nothing left in the review queue.
-      </p>
-    </aside>
+        {details && (
+          <PlacemarkForm
+            key={`${id}-${resetKey}`}
+            mode="edit"
+            placemarkId={details.id}
+            initial={detailsToFormValues(details)}
+            lat={details.lat}
+            lon={details.lon}
+            submitLabel="Save & next"
+            onSaved={(savedId) => advance(savedId)}
+            onCancel={() => setResetKey((n) => n + 1)}
+            onDeleted={() => advance(id)}
+          />
+        )}
+      </div>
+    </DetailPanel>
   );
 }

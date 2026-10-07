@@ -136,16 +136,18 @@ app/
     categories.ts   category CRUD plus createCategoryQuick for inline creation
     placemarks.ts   createPlacemark, savePlacemark, deletePlacemark, logVisit, tag helpers
   api/search/       the search route described above
-  categories/       category management route
-  review/           review queue route
+  (app)/            signed-in routes; layout.tsx = icon rail + persistent map
+    page.tsx        map search / filters (home)
+    categories/     category management route
+    review/         review queue route
   sign-in/          auth route
-  page.tsx          map explorer (home)
   globals.css       Tailwind v4 config and the Crimson & Patina design tokens
 components/
-  map/              MapExplorer, MapView, DetailDrawer, PlacemarkForm, filters, toolbars
+  shell/            ShellContext, AppRail, ContextPanel, DetailPanel, skeletons
+  map/              MapView, MapPanels, DetailDrawer, PlacemarkForm, filters, toolbars
   categories/       category management UI and icon picker
-  review/           ReviewExplorer, ReviewQueueContext, ReviewList, ReviewDetailPanel
-  ui/               AppHeader, BottomSheet, DrawerShell, Skeleton, Spinner, SubmitButton
+  review/           ReviewQueueContext, ReviewList, ReviewDetailPanel
+  ui/               Skeleton, Spinner, SubmitButton
 lib/
   supabase/         client.ts, server.ts, middleware.ts (updateSession)
   map/              basemaps.ts, categoryStyle.ts, markerIcons.ts
