@@ -25,6 +25,26 @@ The base schema was created from the sibling repo `C:\Users\dave\Repos\sl-maps-s
 - `@hugeicons/react` + `@hugeicons/core-free-icons` for UI icons — `<HugeiconsIcon icon={SomeIcon} />`, icon data imported by name (e.g. `Search01Icon`) from `@hugeicons/core-free-icons`, tree-shakes per-icon since both packages are `sideEffects: false`. (Not `hugeicons-react`, which is deprecated.)
 - `zod` v4 for validating server action and route handler input — `import { z } from 'zod'`; shared schemas go in `lib/validation/` (see `docs/refactor/ARCHITECTURE.md`).
 
+### Commands
+
+Node 24 (`.nvmrc`; `engines.node` matches the Vercel project's Node.js 24.x).
+
+| Command                | What it does                                                 |
+| ---------------------- | ------------------------------------------------------------ |
+| `npm run dev`          | Dev server                                                   |
+| `npm run build`        | Production build                                             |
+| `npm run typecheck`    | `next typegen` then `tsc --noEmit`                           |
+| `npm run lint`         | ESLint (Next config + `sl-maps/no-server-imports-in-client`) |
+| `npm run lint:fix`     | ESLint with `--fix`                                          |
+| `npm run format`       | Prettier `--write` over the repo                             |
+| `npm run format:check` | Prettier `--check` over the repo                             |
+
+Keep `build`, `typecheck` and `lint` green. The codebase has not been run through Prettier yet (baseline in `docs/refactor/AUDIT.md` §16), so `format:check` fails until the one-off formatting commit lands; don't run `npm run format` as part of any other change. Prettier settings: single quotes, semicolons, 2 spaces, `prettier-plugin-tailwindcss` with `app/globals.css` as the stylesheet; generated icon data and `docs/*.html` are ignored.
+
+A `'use client'` file must not import `@lib/supabase/server` or `lib/data/` (except `lib/data/client/`). `eslint-rules/no-server-imports-in-client.mjs` enforces this for files that declare the directive themselves; hook modules without it aren't checked.
+
+Line endings are LF everywhere (`.gitattributes`).
+
 ### Structure
 
 - `app/actions/` — server actions: `auth.ts` (Supabase `signInWithPassword`), `categories.ts` (CRUD + `createCategoryQuick` for inline creation from other forms), `placemarks.ts` (`createPlacemark`; `savePlacemark`, the general edit used by both the home map and the `/review` queue, which clears `needs_review` on every save; `deletePlacemark` soft delete; `logVisit`; tag find-or-create/replace-all helpers)

@@ -52,7 +52,7 @@ A note on icons: use `<HugeiconsIcon icon={SomeIcon} />` with the icon data impo
 
 ### Prerequisites
 
-- Node.js 20 or newer
+- Node.js 24 (see `.nvmrc`)
 - A Supabase project with PostGIS enabled
 - A Mapbox access token
 
@@ -78,12 +78,16 @@ The dev server runs at [http://localhost:3000](http://localhost:3000).
 
 ### Scripts
 
-| Command         | What it does               |
-| --------------- | -------------------------- |
-| `npm run dev`   | Start the dev server       |
-| `npm run build` | Production build           |
-| `npm run start` | Serve the production build |
-| `npm run lint`  | Run ESLint                 |
+| Command                | What it does                                     |
+| ---------------------- | ------------------------------------------------ |
+| `npm run dev`          | Start the dev server                             |
+| `npm run build`        | Production build                                 |
+| `npm run start`        | Serve the production build                       |
+| `npm run typecheck`    | Generate route types, then type-check with `tsc` |
+| `npm run lint`         | Run ESLint                                       |
+| `npm run lint:fix`     | Run ESLint and apply automatic fixes             |
+| `npm run format`       | Format the repo with Prettier                    |
+| `npm run format:check` | Check formatting without writing                 |
 
 `scripts/generate-hugeicons-names.mjs` regenerates `lib/map/hugeiconsNames.json` and the per-icon JSON under `public/hugeicons/`, which back the icon picker in category management and the glyphs on map pins.
 

@@ -856,3 +856,18 @@ Source: `docs/results.md` (queries 1–13 from §13, run against the live projec
 | `placemark_details` matches the sibling definition (full `geom`, `media`, `visits`, `attributes`)                                                                                    | Query 6         | §3.3 #10 overfetch confirmed                                                                                                       |
 | `visits_not_future` still in place; nullable `visited_on` passes it                                                                                                                  | Query 9         | OK                                                                                                                                 |
 | `anon` (via `PUBLIC`) can execute all 18 app functions, including security-definer `default_owner_id()`, which leaks the owner's UUID; reads and writes are otherwise bounded by RLS | Query 3b        | **New** security finding (§9, §4.2 #12); revoke in a migration                                                                     |
+
+---
+
+## 16. Tooling baseline
+
+Recorded when the developer tooling landed (on top of `dc92167`, `phase-0-baseline`). Later phases should hold or improve these numbers.
+
+| Check                       | Command                     | Baseline                                                                                                                                                                                                                                 |
+| --------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Types (TypeScript 5.9.3)    | `npm run typecheck`         | **0 errors.** Runs `next typegen` first so route types and `next-env.d.ts` exist on a fresh clone.                                                                                                                                       |
+| Lint (ESLint 9.39.5)        | `npm run lint`              | **0 errors, 0 warnings**, including the new `sl-maps/no-server-imports-in-client` rule (0 violations).                                                                                                                                   |
+| `eslint-disable` comments   | `grep -rn "eslint-disable"` | **6**, all `react-hooks/exhaustive-deps`: MapView.tsx:828, MapView.tsx:920, SearchBox.tsx:144, ReviewDetailPanel.tsx:53, ReviewQueueContext.tsx:121, DetailPanel.tsx:29 (§12). MapView.tsx:450 mentions one in prose and is not counted. |
+| Formatting (Prettier 3.9.9) | `npm run format:check`      | **34 files would change** (fails). The codebase has not been formatted yet; that is its own commit. Most of the diff is markdown tables in `docs/refactor/` and Tailwind class order.                                                    |
+| Line endings                | `git ls-files --eol`        | `.gitattributes` sets `* text=auto eol=lf`. `git add --renormalize .` changed nothing: every text file was already LF in the index. The 10 CRLF working copies (§11) are now LF.                                                         |
+| Node                        | `vercel project inspect`    | The Vercel project builds on **Node.js 24.x**. `.nvmrc` is `24` and `engines.node` is `24.x`.                                                                                                                                            |

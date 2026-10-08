@@ -67,7 +67,7 @@ docs/                    tracked: schema design, style guide, refactor/, perform
 | URL state      | Raw `pushState` in 7 files; the param list duplicated in `ShellContext`; `?id=` is a placemark on `/` and `/review` but a category on `/categories` | Typed helpers in `lib/url/`, one param registry, the `id` collision resolved                                    |
 | Shell geometry | 768px breakpoint, 320px panel width and ⅔ detail height each exist as Tailwind classes and again as JS literals                               | One constants module feeding both                                                                               |
 | Icons          | 5,437 committed JSON files (19 MB on disk) and a 98 kB name manifest in a client bundle                                                       | Decided in phase 4.4; nothing generated is committed                                                            |
-| Tooling        | ESLint only                                                                                                                                   | Typecheck, Prettier, Vitest, CI, pre-commit hook                                                                |
+| Tooling        | ESLint (plus a client/server import rule), typecheck, Prettier configured but not yet applied; baseline in [AUDIT.md §16](AUDIT.md#16-tooling-baseline) | Typecheck, Prettier, Vitest, CI, pre-commit hook                                                                |
 
 ## Glossary
 
@@ -147,7 +147,7 @@ One row per REFACTOR, DUPLICATE and DEAD item in [AUDIT.md §0](AUDIT.md#0-inven
 | `sql/0003_drop_want_to_go_index.sql`                        | REFACTOR  | Dropped the wrong index name (no-op)                                                | TBD   | Not started |
 | `sql/0004_placemarks_geojson_review_scope.sql`              | REFACTOR  | Second overload, no limit, no `search_path`, unindexed `anchor` filter              | 4.2   | Not started |
 | `sql/0006_placemarks_search.sql`                            | REFACTOR  | Duplicate blocks; second overload; no `search_path`                                 | TBD   | Not started |
-| `package.json`                                              | REFACTOR  | Unused deps; no `engines`, `typecheck` or `test`                                    | TBD   | Not started |
+| `package.json`                                              | REFACTOR  | Unused deps; no `engines`, `typecheck` or `test`                                    | TBD   | In progress (`engines`, `typecheck` done; unused deps and `test` open) |
 | `next.config.ts`                                            | REFACTOR  | No security headers                                                                 | TBD   | Not started |
 | `.gitignore`                                                | REFACTOR  | Ignores `docs/*`; Prisma skill dirs                                                 | 1.1   | Not started |
 | `AGENTS.md` / `CLAUDE.md`                                   | REFACTOR  | Drift (audit §10)                                                                   | 0.2   | Done        |

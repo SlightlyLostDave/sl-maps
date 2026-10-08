@@ -1,0 +1,9 @@
+# Generated icon data (scripts/generate-hugeicons-names.mjs)
+public/hugeicons/
+lib/map/hugeiconsNames.json
+
+# Standalone design docs, kept as authored
+docs/*.html
+
+# Managed by npm
+package-lock.json
