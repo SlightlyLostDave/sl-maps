@@ -108,7 +108,9 @@ export function SearchResultsProvider({ children }: { children: ReactNode }) {
 export function useSearchResults() {
   const ctx = useContext(SearchResultsContext);
   if (!ctx) {
-    throw new Error('useSearchResults must be used within a SearchResultsProvider');
+    throw new Error(
+      'useSearchResults must be used within a SearchResultsProvider',
+    );
   }
   return ctx;
 }

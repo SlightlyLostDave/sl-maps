@@ -1,4 +1,4 @@
-export const FALLBACK_CATEGORY_COLOR = "#7c7565"; // --cat-none, dark theme
+export const FALLBACK_CATEGORY_COLOR = '#7c7565'; // --cat-none, dark theme
 
 export type CategoryIconStyle = {
   color: string;

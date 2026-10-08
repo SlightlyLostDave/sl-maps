@@ -89,7 +89,7 @@ export default function ReviewDetailPanel() {
             <button
               type="button"
               onClick={() => advance(id)}
-              className="font-mono text-xs uppercase tracking-widest text-ink-faint hover:text-ink"
+              className="font-mono text-xs tracking-widest text-ink-faint uppercase hover:text-ink"
             >
               Skip
             </button>

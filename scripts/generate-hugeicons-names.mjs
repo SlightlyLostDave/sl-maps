@@ -10,30 +10,30 @@
 // runtime. Instead we pre-extract each icon's data (regex over the
 // already-built ESM source, no code execution) into small static JSON
 // files under public/hugeicons/, which the picker fetches by name.
-import { readdirSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+import { readdirSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 const rootDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const iconsDir = path.join(
   rootDir,
-  "node_modules",
-  "@hugeicons",
-  "core-free-icons",
-  "dist",
-  "esm",
+  'node_modules',
+  '@hugeicons',
+  'core-free-icons',
+  'dist',
+  'esm',
 );
-const namesOutPath = path.join(rootDir, "lib", "map", "hugeiconsNames.json");
-const previewOutDir = path.join(rootDir, "public", "hugeicons");
+const namesOutPath = path.join(rootDir, 'lib', 'map', 'hugeiconsNames.json');
+const previewOutDir = path.join(rootDir, 'public', 'hugeicons');
 
-const files = readdirSync(iconsDir).filter((file) => file.endsWith("Icon.js"));
+const files = readdirSync(iconsDir).filter((file) => file.endsWith('Icon.js'));
 
 mkdirSync(previewOutDir, { recursive: true });
 
 const names = [];
 for (const file of files) {
-  const name = file.replace(/\.js$/, "");
-  const source = readFileSync(path.join(iconsDir, file), "utf8");
+  const name = file.replace(/\.js$/, '');
+  const source = readFileSync(path.join(iconsDir, file), 'utf8');
   const match = source.match(/=\s*(\[[\s\S]*?\]);\s*\n\s*export default/);
   if (!match) continue;
   const svgData = JSON.parse(
@@ -42,12 +42,15 @@ for (const file of files) {
       .replace(/(\w+):/g, '"$1":')
       .replace(/'/g, '"'),
   );
-  writeFileSync(path.join(previewOutDir, `${name}.json`), JSON.stringify(svgData));
+  writeFileSync(
+    path.join(previewOutDir, `${name}.json`),
+    JSON.stringify(svgData),
+  );
   names.push(name);
 }
 names.sort((a, b) => a.localeCompare(b));
 
-writeFileSync(namesOutPath, JSON.stringify(names) + "\n");
+writeFileSync(namesOutPath, JSON.stringify(names) + '\n');
 console.log(
   `Wrote ${names.length} icon names to ${path.relative(rootDir, namesOutPath)} and preview JSON to ${path.relative(rootDir, previewOutDir)}/`,
 );

@@ -89,7 +89,7 @@ export default function IconPicker({
         </div>
       </div>
       <span className="text-xs text-ink-faint">
-        HugeIcons icon name — not yet used by map rendering.
+        Hugeicons icon name, drawn on this category&apos;s map pins.
       </span>
     </div>
   );

@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { createContext, useContext, useRef, type ReactNode } from "react";
+import { createContext, useContext, useRef, type ReactNode } from 'react';
 
 type MapControls = {
   refresh: () => void;
@@ -31,11 +31,16 @@ export function MapControlsProvider({ children }: { children: ReactNode }) {
     },
   };
 
-  return <MapControlsContext.Provider value={value}>{children}</MapControlsContext.Provider>;
+  return (
+    <MapControlsContext.Provider value={value}>
+      {children}
+    </MapControlsContext.Provider>
+  );
 }
 
 export function useMapControls() {
   const context = useContext(MapControlsContext);
-  if (!context) throw new Error("useMapControls must be used within a MapControlsProvider");
+  if (!context)
+    throw new Error('useMapControls must be used within a MapControlsProvider');
   return context;
 }

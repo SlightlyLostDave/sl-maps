@@ -40,7 +40,7 @@ export default function StatusFilter({
               type="button"
               onClick={() => setVisited(status)}
               aria-pressed={active}
-              className={`flex-1 px-2 py-1.5 text-xs font-mono transition-colors ${
+              className={`flex-1 px-2 py-1.5 font-mono text-xs transition-colors ${
                 active
                   ? 'bg-crimson-wash text-ink'
                   : 'text-ink-dim hover:text-ink'

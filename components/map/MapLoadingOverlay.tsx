@@ -10,7 +10,7 @@ export default function MapLoadingOverlay({ dim = false }: { dim?: boolean }) {
       <div className="flex flex-col items-center gap-2 text-ink-faint">
         <Spinner size="lg" />
         {!dim && (
-          <span className="font-mono text-[10px] uppercase tracking-[0.14em]">
+          <span className="font-mono text-[10px] tracking-[0.14em] uppercase">
             Loading map…
           </span>
         )}

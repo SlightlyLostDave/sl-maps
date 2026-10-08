@@ -141,7 +141,7 @@ export default function TagInput({
           }}
           placeholder="Add a tag…"
           autoComplete="off"
-          className="w-full rounded-md border border-line bg-ground-2 px-3 py-2 text-base md:text-sm text-ink"
+          className="w-full rounded-md border border-line bg-ground-2 px-3 py-2 text-base text-ink md:text-sm"
         />
         {open &&
           query.trim() &&

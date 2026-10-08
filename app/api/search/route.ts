@@ -1,30 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { createClient } from '@lib/supabase/server';
+import { parseRadiusMeters } from '@lib/url/searchRadius';
 
 const DEFAULT_RADIUS_M = 50_000;
 const MAX_RADIUS_M = 2_000_000; // 2,000 km sanity cap
 const RESULT_LIMIT = 200;
-
-const RADIUS_UNIT_METERS: Record<string, number> = {
-  m: 1,
-  km: 1000,
-  mi: 1609.344,
-};
-
-// Accepts "100km", "50mi", "5000m", or a bare number (assumed km) — the
-// bare-number fallback is a convenience for hand-typed/curl testing against
-// the task's literal endpoint example; the app's own client code always
-// sends an explicit unit ("...&radius=50000m") since its internal state
-// stores metres directly (see useFilterParams.ts).
-function parseRadiusMeters(raw: string | null): number | null {
-  if (!raw) return null;
-  const match = raw.trim().match(/^(\d+(?:\.\d+)?)\s*(km|mi|m)?$/i);
-  if (!match) return null;
-  const value = Number(match[1]);
-  const unit = (match[2] ?? 'km').toLowerCase();
-  return value * RADIUS_UNIT_METERS[unit];
-}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

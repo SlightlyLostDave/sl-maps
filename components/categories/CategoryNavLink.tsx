@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
-import { useCategoryTransition } from "./CategoryTransitionContext";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import type { ReactNode } from 'react';
+import { useCategoryTransition } from './CategoryTransitionContext';
 
 export default function CategoryNavLink({
   href,

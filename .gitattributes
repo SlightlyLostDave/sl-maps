@@ -1,0 +1,22 @@
+# Normalize text files to LF in the repo and in the working tree.
+* text=auto eol=lf
+
+# Images
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.bmp binary
+
+# Fonts
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary
+
+# Generated icon data (scripts/generate-hugeicons-names.mjs)
+public/hugeicons/** -diff linguist-generated
