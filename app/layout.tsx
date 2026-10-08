@@ -44,7 +44,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       data-theme="dark"
       className={`${archivo.variable} ${anybody.variable} ${martianMono.variable} h-full antialiased`}
     >
-      <body className="h-dvh flex flex-col overflow-hidden">{children}</body>
+      <body className="flex h-dvh flex-col overflow-hidden">{children}</body>
     </html>
   );
 }

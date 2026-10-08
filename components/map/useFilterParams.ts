@@ -99,7 +99,10 @@ export function useFilterParams() {
   ) {
     updateParams((params) => {
       params.set('near', `${lat.toFixed(5)},${lon.toFixed(5)}`);
-      params.set('radius', String(Math.round(opts?.radiusM ?? DEFAULT_RADIUS_M)));
+      params.set(
+        'radius',
+        String(Math.round(opts?.radiusM ?? DEFAULT_RADIUS_M)),
+      );
       if (opts?.place) params.set('place', opts.place);
       else params.delete('place');
     });

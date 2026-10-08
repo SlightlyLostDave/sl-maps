@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* ── SL Maps · Crimson & Patina tokens ── */
 :root {
@@ -50,7 +50,7 @@
   --radius-l: 12px;
 }
 
-[data-theme="light"] {
+[data-theme='light'] {
   --ground-0: #f5f0e4;
   --ground-1: #ede7d8;
   --ground-2: #e4dcc9;
@@ -124,16 +124,16 @@
 
 a,
 button:not(:disabled),
-[role="button"]:not([aria-disabled="true"]),
-input[type="submit"]:not(:disabled),
-input[type="button"]:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+input[type='submit']:not(:disabled),
+input[type='button']:not(:disabled),
 label[for],
 select {
   cursor: pointer;
 }
 
 button:disabled,
-[aria-disabled="true"] {
+[aria-disabled='true'] {
   cursor: not-allowed;
 }
 
@@ -148,7 +148,7 @@ body {
 
 .font-display {
   font-family: var(--font-anybody), var(--font-archivo), sans-serif;
-  font-variation-settings: "wdth" 78;
+  font-variation-settings: 'wdth' 78;
   font-stretch: 78%;
   font-weight: 800;
   letter-spacing: 0.005em;

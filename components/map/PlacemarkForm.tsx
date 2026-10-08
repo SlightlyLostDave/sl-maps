@@ -217,7 +217,7 @@ export default function PlacemarkForm({
           onChange={(e) => update('description', e.target.value)}
           onBlur={handleDescriptionBlur}
           rows={3}
-          className={`${inputClass} min-h-24 md:min-h-32 resize-y`}
+          className={`${inputClass} min-h-24 resize-y md:min-h-32`}
         />
       </label>
 

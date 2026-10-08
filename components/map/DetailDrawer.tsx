@@ -148,7 +148,7 @@ export default function DetailDrawer() {
       {details && !editing && (
         <>
           <div
-            className="mb-1.5 flex items-center gap-1.5 pr-14 text-[0.688rem] font-bold uppercase tracking-[0.14em] md:pr-16"
+            className="mb-1.5 flex items-center gap-1.5 pr-14 text-[0.688rem] font-bold tracking-[0.14em] uppercase md:pr-16"
             style={{ color: details.category.color }}
           >
             <span
@@ -181,7 +181,7 @@ export default function DetailDrawer() {
               <button
                 type="button"
                 onClick={openEdit}
-                className="font-mono text-[10px] uppercase tracking-widest text-ink-faint hover:text-ink"
+                className="font-mono text-[10px] tracking-widest text-ink-faint uppercase hover:text-ink"
               >
                 Edit
               </button>
@@ -201,7 +201,7 @@ export default function DetailDrawer() {
 
             <div>
               <div className="grid grid-cols-[84px_1fr] items-center gap-x-3.5 gap-y-2 text-sm">
-                <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                <div className="text-[0.688rem] font-bold tracking-[0.14em] text-ink-faint uppercase">
                   Status
                 </div>
                 <div className="text-ink-dim">
@@ -212,21 +212,21 @@ export default function DetailDrawer() {
 
                 {details.priority != null && (
                   <>
-                    <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                    <div className="text-[0.688rem] font-bold tracking-[0.14em] text-ink-faint uppercase">
                       Priority
                     </div>
                     <div className="text-ink-dim">{details.priority} / 5</div>
                   </>
                 )}
 
-                <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                <div className="text-[0.688rem] font-bold tracking-[0.14em] text-ink-faint uppercase">
                   Source
                 </div>
                 <div className="text-ink-dim">{details.source}</div>
 
                 {details.tags.length > 0 && (
                   <>
-                    <div className="text-[0.688rem] font-bold uppercase tracking-[0.14em] text-ink-faint">
+                    <div className="text-[0.688rem] font-bold tracking-[0.14em] text-ink-faint uppercase">
                       Tags
                     </div>
                     <div className="flex flex-wrap gap-1.5">

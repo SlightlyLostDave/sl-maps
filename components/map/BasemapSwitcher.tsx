@@ -17,7 +17,7 @@ export default function BasemapSwitcher({
   const target = BASEMAPS[otherBasemapId(activeBasemapId)];
 
   return (
-    <div className="absolute left-[calc(0.75rem+env(safe-area-inset-left))] bottom-3 z-10 md:left-auto md:right-3 md:bottom-3">
+    <div className="absolute bottom-3 left-[calc(0.75rem+env(safe-area-inset-left))] z-10 md:right-3 md:bottom-3 md:left-auto">
       {/* Mobile: bottom-left, opposite AddPlacemarkToolbar (the map ends
           above the bottom tab bar, which handles the safe area itself).
           Desktop: bottom-right, clear of the AddPlacemarkToolbar's

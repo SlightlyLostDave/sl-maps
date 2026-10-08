@@ -47,7 +47,7 @@ export default function CopyPermalinkButton({
     <button
       type="button"
       onClick={copy}
-      className={`font-mono uppercase tracking-widest text-ink-faint hover:text-ink ${className}`}
+      className={`font-mono tracking-widest text-ink-faint uppercase hover:text-ink ${className}`}
     >
       <span aria-live="polite">
         {status === 'copied'

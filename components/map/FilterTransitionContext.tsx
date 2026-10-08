@@ -1,13 +1,23 @@
-"use client";
+'use client';
 
-import { createContext, useContext, useTransition, type ReactNode, type TransitionStartFunction } from "react";
+import {
+  createContext,
+  useContext,
+  useTransition,
+  type ReactNode,
+  type TransitionStartFunction,
+} from 'react';
 
 const FilterTransitionContext = createContext<{
   isPending: boolean;
   startTransition: TransitionStartFunction;
 } | null>(null);
 
-export function FilterTransitionProvider({ children }: { children: ReactNode }) {
+export function FilterTransitionProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
   const [isPending, startTransition] = useTransition();
   return (
     <FilterTransitionContext.Provider value={{ isPending, startTransition }}>
@@ -18,6 +28,9 @@ export function FilterTransitionProvider({ children }: { children: ReactNode }) 
 
 export function useFilterTransition() {
   const context = useContext(FilterTransitionContext);
-  if (!context) throw new Error("useFilterTransition must be used within a FilterTransitionProvider");
+  if (!context)
+    throw new Error(
+      'useFilterTransition must be used within a FilterTransitionProvider',
+    );
   return context;
 }

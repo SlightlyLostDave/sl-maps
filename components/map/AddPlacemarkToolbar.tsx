@@ -29,7 +29,7 @@ export default function AddPlacemarkToolbar({
   isLocating?: boolean;
 }) {
   return (
-    <div className="absolute right-[calc(0.75rem+env(safe-area-inset-right))] bottom-3 z-10 flex flex-col items-end gap-2 md:right-3 md:top-23 md:bottom-auto">
+    <div className="absolute right-[calc(0.75rem+env(safe-area-inset-right))] bottom-3 z-10 flex flex-col items-end gap-2 md:top-23 md:right-3 md:bottom-auto">
       <div className="flex flex-col gap-1.5 rounded-md border border-line-strong bg-bg-raised p-1 shadow-(--shadow)">
         {!placing ? (
           <>

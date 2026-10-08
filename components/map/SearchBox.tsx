@@ -12,7 +12,9 @@ import { useMapControls } from './MapControlsContext';
 import { useFilterParams } from './useFilterParams';
 
 function parseCoordinates(input: string): [number, number] | null {
-  const match = input.trim().match(/^(-?\d+(?:\.\d+)?)\s*[,\s]\s*(-?\d+(?:\.\d+)?)$/);
+  const match = input
+    .trim()
+    .match(/^(-?\d+(?:\.\d+)?)\s*[,\s]\s*(-?\d+(?:\.\d+)?)$/);
   if (!match) return null;
   const lat = Number(match[1]);
   const lng = Number(match[2]);
@@ -52,9 +54,10 @@ export default function SearchBox() {
   // The last place we actually navigated to (typed coordinates, or a picked
   // suggestion) — kept around so switching the proximity toggle on can
   // start a proximity search immediately without the user retyping.
-  const [resolvedLocation, setResolvedLocation] = useState<ResolvedLocation | null>(
-    near ? { lat: near.lat, lon: near.lon } : null,
-  );
+  const [resolvedLocation, setResolvedLocation] =
+    useState<ResolvedLocation | null>(
+      near ? { lat: near.lat, lon: near.lon } : null,
+    );
   const requestIdRef = useRef(0);
 
   // Keep the input in sync when the query is cleared/changed elsewhere (e.g.
@@ -120,11 +123,18 @@ export default function SearchBox() {
         if (requestId !== requestIdRef.current) return;
         const data = await res.json();
         const features: GeocodeSuggestion[] = (data?.features ?? []).map(
-          (f: {
-            id?: string;
-            properties?: { name?: string; full_address?: string; mapbox_id?: string };
-            geometry: { coordinates: [number, number] };
-          }, index: number) => {
+          (
+            f: {
+              id?: string;
+              properties?: {
+                name?: string;
+                full_address?: string;
+                mapbox_id?: string;
+              };
+              geometry: { coordinates: [number, number] };
+            },
+            index: number,
+          ) => {
             const [lon, lat] = f.geometry.coordinates;
             return {
               id: f.id ?? f.properties?.mapbox_id ?? String(index),
@@ -145,7 +155,12 @@ export default function SearchBox() {
   }, [inputValue]);
 
   function acceptSuggestion(s: GeocodeSuggestion) {
-    setResolvedLocation({ lat: s.lat, lon: s.lon, place: s.name, suggestionId: s.id });
+    setResolvedLocation({
+      lat: s.lat,
+      lon: s.lon,
+      place: s.name,
+      suggestionId: s.id,
+    });
     flyTo([s.lon, s.lat], { zoom: 11 }); // always just navigate
     if (proximityEnabled) setNear(s.lat, s.lon, { place: s.name });
   }
@@ -158,7 +173,9 @@ export default function SearchBox() {
         setNear(
           resolvedLocation.lat,
           resolvedLocation.lon,
-          resolvedLocation.place ? { place: resolvedLocation.place } : undefined,
+          resolvedLocation.place
+            ? { place: resolvedLocation.place }
+            : undefined,
         );
       }
     } else {
