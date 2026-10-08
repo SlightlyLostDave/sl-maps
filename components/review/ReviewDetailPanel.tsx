@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@lib/supabase/client';
 import Skeleton from '@components/ui/Skeleton';
 import DetailPanel from '@components/shell/DetailPanel';
+import CopyPermalinkButton from '@components/map/CopyPermalinkButton';
 import PlacemarkForm from '@components/map/PlacemarkForm';
 import { useMapControls } from '@components/map/MapControlsContext';
 import {
@@ -76,13 +77,23 @@ export default function ReviewDetailPanel() {
       <div className="max-w-3xl">
         <div className="mb-1 flex items-center justify-between md:pr-16">
           <h2 className="eyebrow">Reviewing</h2>
-          <button
-            type="button"
-            onClick={() => advance(id)}
-            className="font-mono text-xs uppercase tracking-widest text-ink-faint hover:text-ink"
-          >
-            Skip
-          </button>
+          <div className="flex items-center gap-4">
+            {details && (
+              <CopyPermalinkButton
+                placemarkId={details.id}
+                lat={details.lat}
+                lon={details.lon}
+                className="text-xs"
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => advance(id)}
+              className="font-mono text-xs uppercase tracking-widest text-ink-faint hover:text-ink"
+            >
+              Skip
+            </button>
+          </div>
         </div>
 
         {loading && (

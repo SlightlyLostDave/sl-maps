@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@lib/supabase/client';
 import Skeleton from '@components/ui/Skeleton';
 import DetailPanel from '@components/shell/DetailPanel';
+import CopyPermalinkButton from './CopyPermalinkButton';
 import PlacemarkForm from './PlacemarkForm';
 import { detailsToFormValues, type PlacemarkDetails } from './placemarkDetails';
 
@@ -171,13 +172,20 @@ export default function DetailDrawer() {
               </span>{' '}
               <span>{details.geom_kind}</span>
             </span>
-            <button
-              type="button"
-              onClick={openEdit}
-              className="font-mono text-[10px] uppercase tracking-widest text-ink-faint hover:text-ink"
-            >
-              Edit
-            </button>
+            <div className="flex items-center gap-4">
+              <CopyPermalinkButton
+                placemarkId={details.id}
+                lat={details.lat}
+                lon={details.lon}
+              />
+              <button
+                type="button"
+                onClick={openEdit}
+                className="font-mono text-[10px] uppercase tracking-widest text-ink-faint hover:text-ink"
+              >
+                Edit
+              </button>
+            </div>
           </div>
 
           <div className="grid gap-x-10 gap-y-4 md:grid-cols-2">
