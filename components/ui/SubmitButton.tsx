@@ -33,8 +33,8 @@ export default function SubmitButton({
   formAction?: ComponentProps<"button">["formAction"];
 }) {
   // pending reflects the whole form's submission state, not just this
-  // button — if a form has multiple SubmitButtons (e.g. Save + Skip in
-  // ReviewDetail), clicking either disables both. That's intentional: it
+  // button — if a form has multiple SubmitButtons (e.g. two buttons with
+  // different formActions), clicking either disables both. That's intentional: it
   // prevents double-submitting via the other action while one is in flight.
   const { pending } = useFormStatus();
 

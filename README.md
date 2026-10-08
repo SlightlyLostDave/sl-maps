@@ -1,18 +1,14 @@
 <div align="center">
   <a href="https://sl-maps-neon.vercel.app">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://sl-maps-neon.vercel.app/logo.svg">
-      <img alt="SL Maps logo" src="https://sl-maps-neon.vercel.app/logo-light.svg" height="128">
-    </picture>
+    <img alt="SL Maps logo" src="https://sl-maps-neon.vercel.app/logo.svg" height="128">
   </a>
   <h1>SL Maps</h1>
 
-<a href="https://www.npmjs.com/package/next"><img alt="NPM version" src="https://img.shields.io/npm/v/next.svg?style=for-the-badge&labelColor=000000"></a>
 <img alt="License" src="https://img.shields.io/github/license/SlightlyLostDave/sl-maps?style=for-the-badge">
 
 </div>
 
-A personal field-mapping tool for tracking real-world places: dive sites, urbex spots, rockhounding locations, heritage sites, and anything else worth going back to. Placemarks carry categories, tags, visit logs, and photo media, backed by PostGIS geometry.
+A personal field-mapping tool for tracking real-world places: dive sites, urbex spots, rockhounding locations, heritage sites, and anything else worth going back to. Placemarks carry categories, tags, and visit logs, backed by PostGIS geometry.
 
 Live: [sl-maps-neon.vercel.app](https://sl-maps-neon.vercel.app)
 
@@ -22,7 +18,7 @@ Built by [Dave Beach](https://davebeach.me) as the web front end for a QGIS-to-P
 
 **Map explorer.** A clustered Mapbox GL map of every placemark, with category-coloured pins, labels, and a dark basemap tuned at runtime to match the app theme. Basemap toggles between streets and satellite, and the choice persists locally.
 
-**Add from the map.** Drop a placemark by clicking the map in placing mode, or use device geolocation to place one at your current position.
+**Add from the map.** "Add placemark" shows a crosshair at the centre of the map; pan the map until it sits on the spot, then "Place here" opens the create panel at that location. "Use my location" recentres the map on your device's position, which is handy before placing.
 
 **Detail drawer.** View, edit, and create panels are URL-driven (`?id=<uuid>`, `?id=<uuid>&edit=1`, `?id=new&lat=&lon=`), so any state is linkable and survives a refresh. The form handles inline category creation, autosave-on-blur descriptions, visit logging, and soft delete with confirmation.
 
@@ -89,7 +85,7 @@ The dev server runs at [http://localhost:3000](http://localhost:3000).
 | `npm run start` | Serve the production build |
 | `npm run lint`  | Run ESLint                 |
 
-`scripts/generate-hugeicons-names.mjs` regenerates `lib/map/hugeicons/names.json` and the per-icon JSON under `public/hugeicons/`, which back the icon picker in category management.
+`scripts/generate-hugeicons-names.mjs` regenerates `lib/map/hugeiconsNames.json` and the per-icon JSON under `public/hugeicons/`, which back the icon picker in category management and the glyphs on map pins.
 
 ## Database
 
@@ -102,13 +98,13 @@ PostgreSQL 15+ with PostGIS 3.3+, hosted on Supabase.
 - `categories` is self-referencing (parent/child) with JSONB per-category fields.
 - `tags` and `placemark_tags` handle tagging.
 - `visits` records individual visits to a placemark.
-- `media` stores photos, deduplicated by checksum.
+- `media` stores photos, deduplicated by checksum. The schema supports it, but image upload is out of scope for the app and nothing reads or writes it yet.
 - `collections` and `collection_items` group placemarks.
 - `placemark_conflicts` archives sync conflicts.
 
 ### Conventions
 
-UUIDs are client-generated. Deletes are always soft. Every table carries `deleted_at`, `revision`, and `server_seq` sync columns. CHECK constraints are used instead of enums.
+The schema design calls for client-generated UUIDs, but today only tags get an id from the app (`crypto.randomUUID()`); placemarks, categories and visits take the database default, `uuid_generate_v7()`. Deletes are always soft. Every table carries `deleted_at`, `revision`, and `server_seq` sync columns. CHECK constraints are used instead of enums.
 
 ## Search API
 
@@ -121,7 +117,7 @@ UUIDs are client-generated. Deletes are always soft. Every table carries `delete
 | `radius`       | Accepts `100km`, `50mi`, `5000m`, or a bare number treated as km. Defaults to 50 km, capped at 2,000 km |
 | `cat`          | Comma-separated category UUIDs                                                                          |
 | `visited`      | `1` or `0`                                                                                              |
-| `needs_review` | `1` to scope to the review backlog                                                                      |
+| `needs_review` | `1` to scope to the review backlog. Supported by the API but not sent by the app today                  |
 
 At least one of `q` or a `lat`/`lon` pair is required. Results are capped at 200.
 
@@ -150,7 +146,7 @@ components/
   ui/               Skeleton, Spinner, SubmitButton
 lib/
   supabase/         client.ts, server.ts, middleware.ts (updateSession)
-  map/              basemaps.ts, categoryStyle.ts, markerIcons.ts
+  map/              basemaps.ts, categoryStyle.ts, markerIcons.ts, hugeiconsNames.json
   slug.ts           shared slugify, kept out of app/actions/ because "use server" files may only export async functions
 sql/                incremental migrations, run by hand
 proxy.ts            Next.js 16's replacement for middleware.ts
@@ -158,7 +154,7 @@ proxy.ts            Next.js 16's replacement for middleware.ts
 
 Some notes on the less obvious pieces:
 
-`savePlacemark` is shared by the home map and the review queue, and clears `needs_review` on every save. `MapView.tsx` handles the mapbox-gl wrapper, clustering, click-to-add mode, and geolocation. When rendered on `/review` it scopes to `needs_review=true` placemarks and hides the add-placemark toolbar.
+`savePlacemark` is shared by the home map and the review queue, and clears `needs_review` on every save. `MapView.tsx` handles the mapbox-gl wrapper, clustering, the crosshair placing mode, and geolocation. When rendered on `/review` it scopes to `needs_review=true` placemarks and hides the add-placemark toolbar.
 
 `MapControlsContext.tsx` exposes `refresh` and `flyTo` to sibling components without leaking the mapbox instance itself. `ReviewQueueContext.tsx` mirrors that provider pattern for queue list, progress, and next-id state.
 

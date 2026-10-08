@@ -20,7 +20,8 @@ const martianMono = Martian_Mono({
 
 export const metadata: Metadata = {
   title: 'SL Maps',
-  description: 'Interactive maps built with Mapbox and Next.js',
+  description:
+    'A personal field-mapping tool for tracking real-world places worth going back to.',
 };
 
 // viewportFit: 'cover' is required for env(safe-area-inset-*) to resolve to

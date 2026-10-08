@@ -151,14 +151,13 @@ function fetchIconData(iconName: string): Promise<IconSvgElement> {
   return cached;
 }
 
-// Keyed by (category id, color, icon), so editing a category's color/icon
-// bakes fresh pixel data instead of reusing stale pixels left over from a
-// previous MapView mount — this cache is a module-level Map, so it otherwise
-// survives client-side unmount/remount (e.g. navigating to /categories and
-// back) even though `map.hasImage()` does not. When the style hasn't changed,
-// the same key still lets the pixel data be reused across setStyle() calls
-// (which wipe every mapbox image) without redoing the fetch + canvas work,
-// just a cheap re-addImage.
+// Module-level cache of baked pin pixels, keyed by (category id, color, icon,
+// visited) so a changed color or icon never reuses stale pixels. setStyle()
+// (basemap switch) wipes every mapbox image; this cache turns re-registering
+// them into a cheap addImage instead of another fetch + canvas draw. Note that
+// the one persistent map keeps its registered image per category id, and
+// ensureCategoryPin's hasImage() early return means an edited category's pin
+// only refreshes after a style reload or a full page load.
 const pinDataCache = new Map<string, ImageData>();
 
 function pinCacheKey(
