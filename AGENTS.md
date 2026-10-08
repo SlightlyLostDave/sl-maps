@@ -38,12 +38,20 @@ Node 24 (`.nvmrc`; `engines.node` matches the Vercel project's Node.js 24.x).
 | `npm run lint:fix`     | ESLint with `--fix`                                          |
 | `npm run format`       | Prettier `--write` over the repo                             |
 | `npm run format:check` | Prettier `--check` over the repo                             |
+| `npm test`             | Vitest, single run (`tests/**/*.test.ts`)                    |
+| `npm run test:watch`   | Vitest in watch mode                                         |
 
-Keep `build`, `typecheck` and `lint` green. The codebase has not been run through Prettier yet (baseline in `docs/refactor/AUDIT.md` §16), so `format:check` fails until the one-off formatting commit lands; don't run `npm run format` as part of any other change. Prettier settings: single quotes, semicolons, 2 spaces, `prettier-plugin-tailwindcss` with `app/globals.css` as the stylesheet; generated icon data and `docs/*.html` are ignored.
+Keep `build`, `typecheck`, `lint` and `test` green. The codebase has not been run through Prettier yet (baseline in `docs/refactor/AUDIT.md` §16), so `format:check` fails until the one-off formatting commit lands; don't run `npm run format` as part of any other change. Prettier settings: single quotes, semicolons, 2 spaces, `prettier-plugin-tailwindcss` with `app/globals.css` as the stylesheet; generated icon data and `docs/*.html` are ignored.
 
 A `'use client'` file must not import `@lib/supabase/server` or `lib/data/` (except `lib/data/client/`). `eslint-rules/no-server-imports-in-client.mjs` enforces this for files that declare the directive themselves; hook modules without it aren't checked.
 
 Line endings are LF everywhere (`.gitattributes`).
+
+Tests live in `tests/`, mirroring the source path (`lib/url/mapParams.ts` → `tests/lib/url/mapParams.test.ts`). `vitest.config.mts` resolves the tsconfig path aliases, so tests import with `@lib/*` etc. and run in the `node` environment; stub browser globals (`vi.stubGlobal`) rather than adding jsdom for pure helpers. A pure function that needs a test lives in a `lib/` module, not inside a component or route file.
+
+CI (`.github/workflows/ci.yml`) runs on every push and pull request: `npm ci`, then `format:check`, `typecheck`, `lint`, `test` and `build`, all blocking. The build uses placeholder `NEXT_PUBLIC_*` values and never contacts Supabase or Mapbox, so keep build-time code free of network calls. `format:check` fails until the formatting commit lands, so CI is red until then.
+
+`npm install` runs `prepare`, which installs a `simple-git-hooks` pre-commit hook: `lint-staged` runs `prettier --write` then `eslint --fix` on staged files only, and an unfixable lint error blocks the commit. Until the formatting commit lands, staging any file reformats the whole file. Skip the hook once with `SKIP_SIMPLE_GIT_HOOKS=1`.
 
 ### Structure
 
@@ -56,10 +64,13 @@ Line endings are LF everywhere (`.gitattributes`).
 - `components/review/` — backlog-placemark review UI: `ReviewQueueContext.tsx` (client-side queue list, progress and next id; provided by the review page so the queue only loads there; mirrors `MapControlsContext.tsx`'s provider pattern), `ReviewList.tsx`, `ReviewDetailPanel.tsx` (always-editing `PlacemarkForm` with Save & next / Skip)
 - `components/ui/` — shared primitives (`Skeleton.tsx`, `Spinner.tsx`, `SubmitButton.tsx`)
 - `lib/supabase/` — `client.ts`, `server.ts`, `middleware.ts` (`updateSession`)
-- `lib/map/` — `basemaps.ts` (basemap ids, style URLs, localStorage persistence), `categoryStyle.ts`, `markerIcons.ts` (canvas pin rendering + image registration), `hugeiconsNames.json` (generated list of every icon name)
+- `lib/map/` — `basemaps.ts` (basemap ids, style URLs, localStorage persistence), `categoryStyle.ts`, `markerIcons.ts` (canvas pin rendering + image registration), `geometry.ts` (`toPointGeometry`), `camera.ts` (`detailBottomPadding`), `hugeiconsNames.json` (generated list of every icon name)
+- `lib/url/` — pure URL-state parsers: `mapParams.ts` (`parseInitialView`, `parseFilters`, `parseNear`), `searchRadius.ts` (`parseRadiusMeters`, used by `/api/search`), `shellContext.ts` (`ShellContextId`, `contextFromLocation`). The start of the typed URL helpers in `docs/refactor/ARCHITECTURE.md`; there is no param registry yet
 - `lib/slug.ts` — shared `slugify`, kept outside `app/actions/` because `"use server"` files may only export async functions
 - `scripts/generate-hugeicons-names.mjs` — manual script that regenerates `lib/map/hugeiconsNames.json` and the per-icon JSON in `public/hugeicons/` (read by `IconPicker` previews and map pins)
 - `sql/` — incremental migrations (e.g. `0001_placemarks_needs_review.sql`)
+- `tests/` — Vitest unit tests, mirroring source paths
+- `.github/workflows/ci.yml` — CI (see Commands)
 - `proxy.ts` (repo root) — Next.js 16 renamed `middleware.ts` to `proxy.ts`; this invokes `lib/supabase/middleware.ts`'s `updateSession` for auth session handling. It is the framework's replacement, not a stray file.
 
 ### Database

@@ -1,20 +1,14 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { parseNear, type NearPoint } from '@lib/url/mapParams';
 import { useFilterTransition } from './FilterTransitionContext';
 
 export type VisitedStatus = 'all' | 'visited' | 'not_visited';
 
-export type NearPoint = { lat: number; lon: number };
+export type { NearPoint };
 
 const DEFAULT_RADIUS_M = 50_000;
-
-function parseNear(raw: string): NearPoint | null {
-  const [latStr, lonStr] = raw.split(',');
-  const lat = Number(latStr);
-  const lon = Number(lonStr);
-  return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
-}
 
 export function useFilterParams() {
   const searchParams = useSearchParams();

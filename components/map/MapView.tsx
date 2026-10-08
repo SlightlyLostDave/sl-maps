@@ -24,6 +24,13 @@ import {
   saveBasemapId,
   type BasemapId,
 } from '@lib/map/basemaps';
+import { detailBottomPadding } from '@lib/map/camera';
+import { toPointGeometry } from '@lib/map/geometry';
+import {
+  parseFilters,
+  parseInitialView,
+  type Filters,
+} from '@lib/url/mapParams';
 import MapLoadingOverlay from './MapLoadingOverlay';
 import AddPlacemarkToolbar from './AddPlacemarkToolbar';
 import BasemapSwitcher from './BasemapSwitcher';
@@ -56,41 +63,8 @@ type PlacemarkCollection = GeoJSON.FeatureCollection<
   PlacemarkFeature['properties']
 >;
 
-type Filters = {
-  categoryIds: string[] | null;
-  visited: boolean | null;
-  query: string | null;
-  near: { lat: number; lon: number } | null;
-};
-
 const DEFAULT_CENTER: [number, number] = [-80.5, 44.5];
 const DEFAULT_ZOOM = 6;
-
-// Map viewport uses its own `mlat`/`mlng`/`z` params, distinct from the
-// `lat`/`lon` params used elsewhere in this file for a draft placemark's
-// location, so the two don't collide when both are present in the URL.
-function parseInitialView(
-  params: URLSearchParams,
-): { center: [number, number]; zoom: number } | null {
-  if (!params.has('mlat') || !params.has('mlng') || !params.has('z')) {
-    return null;
-  }
-  const lat = Number(params.get('mlat'));
-  const lng = Number(params.get('mlng'));
-  const zoom = Number(params.get('z'));
-  if (
-    !Number.isFinite(lat) ||
-    !Number.isFinite(lng) ||
-    !Number.isFinite(zoom) ||
-    lat < -90 ||
-    lat > 90 ||
-    lng < -180 ||
-    lng > 180
-  ) {
-    return null;
-  }
-  return { center: [lng, lat], zoom };
-}
 
 // Called on every moveend so reloading or sharing the URL restores the same
 // viewport. replaceState (not pushState) keeps camera panning out of browser
@@ -105,43 +79,10 @@ function updateViewParams(map: mapboxgl.Map) {
   window.history.replaceState(null, '', `?${params.toString()}`);
 }
 
-function parseFilters(params: URLSearchParams): Filters {
-  const catParam = params.get('cat');
-  const categoryIds = catParam ? catParam.split(',').filter(Boolean) : null;
-  const visitedParam = params.get('visited');
-  const visited =
-    visitedParam === '1' ? true : visitedParam === '0' ? false : null;
-
-  const query = params.get('q');
-  const nearParam = params.get('near');
-  const near = (() => {
-    if (!nearParam) return null;
-    const [latStr, lonStr] = nearParam.split(',');
-    const lat = Number(latStr);
-    const lon = Number(lonStr);
-    return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon } : null;
-  })();
-
-  return { categoryIds, visited, query, near };
-}
-
-// The QGIS import backlog (sql/0001_placemarks_needs_review.sql) left some
-// placemarks stored as single-coordinate MultiPoint geometry. Mapbox's
-// clustered GeoJSON source only indexes Point features via Supercluster —
-// a MultiPoint mixed into the collection silently breaks clustering for the
-// whole source (no error event, tiles just come back empty), which is what
-// made pins vanish after panning into an area containing one.
-function toPointGeometry(geometry: GeoJSON.Geometry): GeoJSON.Geometry {
-  if (geometry.type === 'MultiPoint') {
-    return { type: 'Point', coordinates: geometry.coordinates[0] };
-  }
-  return geometry;
-}
-
 // Shared by the bbox-driven refresh() and the search-results effect: resolve
 // each feature's pin icon (falling back to the generic pin if the
 // category's hasn't registered yet) and coerce stray MultiPoint geometry to
-// Point (see toPointGeometry above).
+// Point (see toPointGeometry in lib/map/geometry.ts).
 function toRenderableFeatures(
   map: mapboxgl.Map,
   collection: PlacemarkCollection,
@@ -178,18 +119,6 @@ function toRenderableFeatures(
         },
       };
     });
-}
-
-// How much of the map's bottom edge the DetailPanel covers, so the camera
-// can treat only the visible strip above it as the viewport. The panel
-// overlays the map (rather than shrinking it), so this is applied as map
-// padding instead of relying on a container resize. Mirrors DetailPanel's
-// sizing: flush to the map's bottom edge at h-2/3 on desktop; mobile
-// sheets vary with content, so approximate half the height.
-function detailBottomPadding(container: HTMLElement | null, open: boolean) {
-  if (!open || !container) return 0;
-  const desktop = window.matchMedia('(min-width: 768px)').matches;
-  return Math.round(container.clientHeight * (desktop ? 2 / 3 : 0.5));
 }
 
 function cssVar(name: string, fallback: string) {

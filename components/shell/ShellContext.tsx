@@ -10,7 +10,12 @@ import {
 } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-export type ShellContextId = 'search' | 'filters' | 'review' | 'categories';
+import {
+  contextFromLocation,
+  type ShellContextId,
+} from '@lib/url/shellContext';
+
+export type { ShellContextId };
 
 // Params that belong to the map route's own state (filters, search, the
 // search/filters panel choice). Saved when leaving `/` so returning via the
@@ -39,15 +44,6 @@ type ShellValue = {
 };
 
 const ShellContext = createContext<ShellValue | null>(null);
-
-function contextFromLocation(
-  pathname: string,
-  panel: string | null,
-): ShellContextId {
-  if (pathname.startsWith('/review')) return 'review';
-  if (pathname.startsWith('/categories')) return 'categories';
-  return panel === 'filters' ? 'filters' : 'search';
-}
 
 // Owns the icon rail's "which context is showing, and is its panel open"
 // state. Mirrors MapControlsContext's provider pattern — lives in the (app)
