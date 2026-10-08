@@ -52,7 +52,7 @@ export default function SearchResultsList() {
               of {place ?? `${near.lat.toFixed(2)}, ${near.lon.toFixed(2)}`}
             </>
           ) : (
-            'Results'
+            'Your placemarks'
           )}
         </h2>
         <button
@@ -104,8 +104,10 @@ export default function SearchResultsList() {
             </li>
           );
         })}
-        {!loading && features.length === 0 && (
-          <li className="py-1.5 text-sm text-ink-faint">No matches.</li>
+        {features.length === 0 && (
+          <li className="py-1.5 text-sm text-ink-faint">
+            {loading ? 'Searching…' : 'No matches.'}
+          </li>
         )}
       </ul>
     </div>
